@@ -186,6 +186,8 @@
     border: 0; box-shadow: 0 0 0 var(--u) var(--ink); cursor: pointer; touch-action: manipulation;
   }
   .stepper:active { transform: translateY(2px); background: var(--a); color: var(--ink); }
+  /* Phones: a long press on a control should never select text, pop a menu, or flash grey. */
+  button, .track { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
   .type-hint { text-align: center; margin: -4px 0 0; }
   .picker { padding-block: 26px 4px; }
   .track {
@@ -869,16 +871,31 @@
     if (e.key === "ArrowRight" || e.key === "ArrowUp") { setC(c + step); e.preventDefault(); }
   });
 
-  // Plus and minus: tap for one step, hold to run.
+  // Plus and minus: tap for one step, hold to run. One shared repeat that anything can stop:
+  // lifting a finger anywhere, a second touch, the phone taking over the touch, lock-in, a new round,
+  // or leaving the page. It also gives up on its own after a few seconds, so it can never run away.
+  let holdWait = 0, holdRun = 0, holdAt = 0;
+  function stopHold() { clearTimeout(holdWait); clearInterval(holdRun); holdWait = holdRun = 0; }
   for (const [id, d] of [["minus", -1], ["plus", 1]]) {
-    let hold = null;
-    const stop = () => { clearTimeout(hold); clearInterval(hold); hold = null; };
-    $(id).addEventListener("pointerdown", (e) => {
-      e.preventDefault(); setC(c + d * stepFor(r())); tutDid(0);
-      hold = setTimeout(() => { hold = setInterval(() => setC(c + d * stepFor(r())), 60); }, 350);
+    const el = $(id);
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); stopHold();
+      if (locked) return;
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+      setC(c + d * stepFor(r())); tutDid(0);
+      holdAt = performance.now();
+      holdWait = setTimeout(() => {
+        holdRun = setInterval(() => {
+          if (locked || performance.now() - holdAt > 6000) { stopHold(); return; }
+          setC(c + d * stepFor(r()));
+        }, 60);
+      }, 350);
     });
-    for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $(id).addEventListener(ev, stop);
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture", "pointerleave"]) el.addEventListener(ev, stopHold);
+    el.addEventListener("contextmenu", (e) => e.preventDefault());   // no long-press menu on phones
   }
+  for (const ev of ["pointerup", "pointercancel", "blur"]) addEventListener(ev, stopHold);
+  document.addEventListener("visibilitychange", stopHold);
 
   $("chips").addEventListener("click", (e) => {
     const b = e.target.closest(".chip"); if (!b || locked) return;
@@ -1000,7 +1017,7 @@
     if (!practicing && !preview) store.set(progKey(today.no), { results, open: ri });
     locked = false;
     const R = r();
-    buildChips(); hoverG = null;
+    buildChips(); hoverG = null; stopHold();
     $("type-tag").textContent = matchMedia("(pointer: coarse)").matches ? "tap to type" : "type it in";
     c = Math.round(R.min + span(R) / 2);
     g = chipVals[chipVals.length - 1];
@@ -1062,7 +1079,7 @@
     setTut(TUT.length);
     // Take whatever is typed in a number box when time runs out.
     if (document.activeElement === cin) cin.blur();
-    locked = true; clearInterval(timer); sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
+    locked = true; clearInterval(timer); stopHold(); sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
     cin.disabled = true; $("minus").disabled = $("plus").disabled = true;
     const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w) : 0, m = multNow(), pts = base * m;
