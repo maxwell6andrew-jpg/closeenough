@@ -676,13 +676,24 @@
     if (kind === "rock") { make("rock"); make("rock2", 6, 6, speed * 1.2); make("rock2", -5, 12, speed * 0.9); }
     else make(kind);
   }
-  setInterval(() => spawn("sat"), 5000);
-  setInterval(() => spawn("rock"), 15000);
-  setTimeout(() => { spawn("ufo"); setInterval(() => spawn("ufo"), 15000); }, 7500);
-  // The crowned D shows up now and then, not on a schedule you can set your watch by.
-  (function drafty() { setTimeout(() => { spawn("drafty"); drafty(); }, 40000 + Math.random() * 50000); })();
-  setTimeout(() => spawn("sat"), 1200);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { flyers.length = 0; lastStar = 0; } });
+  // Spawns run off the animation clock, not timers: timers pile up while the page is in the
+  // background and then all fire at once, which used to dump the whole sky in at the edges.
+  // Each kind waits a slightly random gap so they never travel in a pack.
+  const GAP = { sat: [4000, 6500], rock: [12000, 18000], ufo: [12000, 18000], drafty: [40000, 90000] };
+  const gap = (k) => GAP[k][0] + Math.random() * (GAP[k][1] - GAP[k][0]);
+  let nextAt = {};
+  function resetSky(now) {
+    flyers.length = 0;
+    // The crowned D shows up now and then, not on a schedule you can set your watch by.
+    nextAt = { sat: now + 1200, ufo: now + 7500, rock: now + 11000, drafty: now + gap("drafty") };
+  }
+  function maybeSpawn(now) {
+    for (const k in nextAt) if (now >= nextAt[k]) { spawn(k); nextAt[k] = now + gap(k); }
+  }
+  resetSky(performance.now());
+  // Coming back to the page (tab switch, app switch, or the back button): start with a clean sky.
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { resetSky(performance.now()); lastStar = 0; } });
+  addEventListener("pageshow", (e) => { if (e.persisted) { resetSky(performance.now()); lastStar = 0; } });
   function paintFlyers(now, dt) {
     for (let i = flyers.length - 1; i >= 0; i--) {
       const f = flyers[i];
@@ -696,7 +707,7 @@
   }
   let lastStar = 0;
   (function loop(t) {
-    if (t - lastStar > 90) { const dt = Math.min(0.2, (t - lastStar) / 1000); paintStars(t); paintFlyers(t, lastStar ? dt : 0); lastStar = t; }
+    if (t - lastStar > 90) { const dt = Math.min(0.2, (t - lastStar) / 1000); if (lastStar && t - lastStar > 1500) resetSky(t); maybeSpawn(t); paintStars(t); paintFlyers(t, lastStar ? dt : 0); lastStar = t; }
     if (!reduce) requestAnimationFrame(loop);
   })(0);
   if (reduce) paintStars(0);
