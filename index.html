@@ -16,9 +16,14 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+10&family=DotGothic16&display=swap">
+<style>
+  /* Self-hosted pixel fonts (SIL Open Font License, assets/fonts/OFL.txt). Jersey 15 is the readable
+     text cut of the same family as the Jersey 10 logo, with natural letter spacing (no monospace gaps). */
+  @font-face { font-family: "Jersey 10"; src: url("assets/fonts/Jersey10-Regular.ttf") format("truetype"); font-display: swap; }
+  @font-face { font-family: "CE Text"; src: url("assets/fonts/Jersey15-Regular.ttf") format("truetype"); font-display: swap; size-adjust: 118%; }
+</style>
+<link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="assets/fonts/Jersey10-Regular.ttf" as="font" type="font/ttf" crossorigin>
 <style>
   /* One deliberate world: a night-sky cartridge. Single theme by choice. */
   [hidden] { display: none !important; }
@@ -36,13 +41,14 @@
     --gold: #FFEC27;  /* the truth, the score */
     --u: 4px;
     --display: "Jersey 10", "Pixelify Sans", ui-monospace, monospace;
-    --body: "DotGothic16", system-ui, -apple-system, sans-serif;
-    --label: "DotGothic16", system-ui, -apple-system, sans-serif;
+    --body: "CE Text", system-ui, -apple-system, sans-serif;
+    --label: "CE Text", system-ui, -apple-system, sans-serif;
   }
   body {
     background: var(--sky); color: var(--paper); font-family: var(--body);
     font-size: 17px; line-height: 1.5; font-weight: 500; padding-inline: 16px; padding-block: 0 96px;
     -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+    font-synthesis: none;   /* one-weight pixel fonts: never fake bold, it smears the pixels */
   }
   #stars { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; pointer-events: none; }
   .wrap { position: relative; z-index: 1; max-width: 460px; margin: 0 auto; }
@@ -80,7 +86,8 @@
   .pv { font-family: var(--display); font-size: 20px; line-height: 1; color: var(--paper); background: var(--deep); border: 0; padding: 6px 8px; box-shadow: 0 0 0 3px var(--ink); cursor: pointer; }
   .pv small { display: block; font-family: var(--label); font-size: 10px; font-weight: 600; color: var(--muted); }
   .pv.on { background: var(--a); color: var(--ink); } .pv.on small { color: var(--ink); }
-  .rule { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; }
+  .rule { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; color: var(--muted); }
+  .rule b { color: var(--paper); font-weight: 400; }   /* one-weight font: the lead-in stands out by color */
   .rule i { font-style: normal; font-family: var(--display); font-size: 28px; line-height: 1; color: var(--gold); }
 
   .btn {
@@ -188,7 +195,6 @@
   .stepper:active { transform: translateY(2px); background: var(--a); color: var(--ink); }
   /* Phones: a long press on a control should never select text, pop a menu, or flash grey. */
   button, .track { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-  .type-hint { text-align: center; margin: -4px 0 0; }
   .picker { padding-block: 26px 4px; }
   .track {
     position: relative; height: 64px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink);
@@ -242,8 +248,6 @@
   .total b::after { font-size: 18px; }
   .vt { font-family: var(--body); font-weight: 700; font-size: 22px; line-height: 1.15; }
   .vs { font-size: 14px; color: var(--muted); }
-  .ppl-line { font-size: 15px; color: var(--muted); }
-  .ppl-line b { color: var(--paper); font-weight: 400; }
   .why { border-left: var(--u) solid var(--gold); padding-left: 14px; display: grid; gap: 6px; }
   .why p { margin: 0; }
   .src { font-size: 13px; color: var(--muted); }
@@ -343,15 +347,14 @@
     .chips { gap: 6px; }
     .chip { font-size: 20px; padding: 9px 0 7px; }
     .chip small { font-size: 10px; letter-spacing: 0; }
-    #type-hint { display: none !important; }
     .verdict { padding: 10px 12px; gap: 2px 12px; }
     .verdict .pts { font-size: 46px; }
     .pts::after { font-size: 11px; }
     .vt { font-size: 18px; }
     .vs { font-size: 13px; }
     .why { gap: 3px; padding-left: 10px; }
-    .why p { font-size: 14.5px; line-height: 1.4; }
-    .src { font-size: 11.5px; }
+    .why p { font-size: 14.5px; line-height: 1.3; }
+    .src { font-size: 11px; line-height: 1.25; }
     #s-title { gap: 14px; }
     #s-title .h-case { font-size: 28px; }
     .rules { gap: 8px; }
@@ -414,13 +417,12 @@
       <h1 class="h-case" id="theme">Is the world getting better?</h1>
       <div class="picker-row" id="preview-row" hidden></div>
       <div class="rules">
-        <div class="rule"><i>1</i><div><b>Guess the number.</b> Swipe, tap, or type it.</div></div>
-        <div class="rule"><i>2</i><div><b>Tap how sure you are.</b> That locks it in. Tighter pays more, but miss and you get 0.</div></div>
-        <div class="rule"><i>3</i><div><b>The stakes climb.</b> Rounds 3 and 4 are ×2. The final round is ×4.</div></div>
-        <div class="rule"><i>4</i><div><b>25 seconds a round.</b> A perfect day is 1,000.</div></div>
+        <div class="rule"><i>1</i><div><b>Guess the number.</b></div></div>
+        <div class="rule"><i>2</i><div><b>Tap how sure you are.</b> Tighter scores more. Miss and it's 0.</div></div>
+        <div class="rule"><i>3</i><div><b>Later rounds count more.</b> The last one counts ×4.</div></div>
       </div>
-      <button class="btn" id="start">START<small>5 ROUNDS · UP TO 1,000 POINTS</small></button>
-      <button class="btn ghost" id="howto">HOW TO PLAY<small>A PRACTICE ROUND, NO CLOCK</small></button>
+      <button class="btn" id="start">START<small>UP TO 1,000 POINTS</small></button>
+      <button class="btn ghost" id="howto">HOW TO PLAY<small>QUICK PRACTICE</small></button>
     </section>
 
     <!-- Round -->
@@ -443,15 +445,13 @@
         </div>
         <div class="scale lbl" id="scale"></div>
       </div>
-      <p class="type-hint lbl" id="type-hint">Swipe or tap the bar, or type your guess</p>
       <div class="sure" id="sure">
-        <div class="sure-h"><span class="lbl">How sure are you? <b class="tap-l">Tap to lock in</b></span></div>
+        <div class="sure-h"><span class="lbl">How sure? <b class="tap-l">Tap to lock in</b></span></div>
         <div class="chips" id="chips"></div>
       </div>
 
       <!-- Reveal parts (shown after lock) -->
       <div class="verdict" id="verdict" hidden><div class="pts" id="pts">0</div><div class="vt" id="vt"></div><div class="vs" id="vs"></div></div>
-      <div class="ppl-line" id="ppl-line" hidden></div>
       <div class="why" id="why" hidden><p id="why-t"></p><span class="src" id="why-s"></span></div>
       <button class="btn" id="next" hidden>NEXT ROUND</button>
     </section>
@@ -571,7 +571,7 @@
   const normWidth = (r, lo, hi) => (hi - lo) * 100 / span(r);
   // Base points per round, 0-100. w is the full window as a % of the scale.
   // Nobody hits it on the nose, so anything within ±3% of the scale is a full 100.
-  // On a 0-100 scale: ±3 100 · ±5 91 · ±10 70 · ±15 52 · ±20 37 · ±25 25 · ±30 15 · ±40 3 · miss 0.
+  // On a 0-100 scale: ±3 100 · ±5 91 · ±10 70 · ±20 37 · ±30 15 · ±40 3 · miss 0.
   // On tiny scales (0-12 hours) the tightest window is ±1, so that counts as full points instead.
   function pointsFor(w, R) {
     const half = w / 2, full = Math.max(3, R ? 100 / span(R) : 0);
@@ -777,7 +777,7 @@
     const done = played(c.no);
     const inProg = !done && !preview && store.get(progKey(c.no));
     $("start").innerHTML = done ? `SEE YOUR RESULT<small>YOU SCORED ${done.total} · BACK TOMORROW</small>`
-      : inProg && Array.isArray(inProg.results) && (inProg.results.length || inProg.open === 0) ? `CONTINUE<small>ROUND ${Math.min(5, inProg.results.length + (inProg.open === inProg.results.length ? 2 : 1))} OF 5</small>` : "START<small>5 ROUNDS · UP TO 1,000 POINTS</small>";
+      : inProg && Array.isArray(inProg.results) && (inProg.results.length || inProg.open === 0) ? `CONTINUE<small>ROUND ${Math.min(5, inProg.results.length + (inProg.open === inProg.results.length ? 2 : 1))} OF 5</small>` : "START<small>UP TO 1,000 POINTS</small>";
     const sk = streakNow();
     $("streak").textContent = sk ? `${sk}-day streak` : "";
     if (preview) [...$("preview-row").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.no) === c.no));
@@ -820,7 +820,7 @@
   // How sure are you: from ±3% of the scale (full points) out to ±40%.
   function chipsFor(R) {
     const out = [];
-    for (const k of [3, 5, 10, 15, 20, 25, 30, 40]) {
+    for (const k of [3, 5, 10, 20, 30, 40]) {
       const t = k * span(R) / 100;
       const v = t < 10 ? Math.max(1, Math.round(t)) : nice(t);   // small scales get every whole step
       if (!out.includes(v)) out.push(v);
@@ -832,7 +832,7 @@
     chipVals = chipsFor(R);
     $("chips").innerHTML = chipVals.map((v) =>
       `<button class="chip" data-g="${v}">±${short(v)}<small>${num(pointsFor(normWidth(R, 0, 2 * v), R) * multNow())} PTS</small></button>`).join("");
-    $("chips").style.gridTemplateColumns = `repeat(${Math.min(4, chipVals.length)}, 1fr)`;
+    $("chips").style.gridTemplateColumns = `repeat(${Math.min(3, chipVals.length)}, 1fr)`;
   }
   function render() {
     const R = r(), gv = locked ? g : hoverG, lo = c - (gv || 0), hi = c + (gv || 0);
@@ -1065,10 +1065,10 @@
     });
     $("q").textContent = R.q;
     $("unit").textContent = R.unit;
-    $("scale").innerHTML = [0, 0.25, 0.5, 0.75, 1].map((k) => `<span style="left:${EDGE + (100 - 2 * EDGE) * k}%">${short(Math.round(R.min + k * span(R)))}</span>`).join("");
+    $("scale").innerHTML = [0, 1].map((k) => `<span style="left:${EDGE + (100 - 2 * EDGE) * k}%">${short(Math.round(R.min + k * span(R)))}</span>`).join("");
     $("unit").classList.toggle("wordy", R.unit.trim().length > 4);
-    for (const id of ["verdict", "why", "next", "truth", "truth-tag", "ppl-line"]) $(id).hidden = true;
-    for (const id of ["sure", "type-hint"]) $(id).hidden = false;
+    for (const id of ["verdict", "why", "next", "truth", "truth-tag"]) $(id).hidden = true;
+    $("sure").hidden = false; $("timer-row").hidden = false; $("type-tag").hidden = false;
     render();
     clearInterval(timer);
     document.querySelector(".screen").scrollIntoView({ block: "start" });
@@ -1105,8 +1105,6 @@
     const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w, R) : 0, m = multNow(), pts = base * m;
     // What real people guessed, when a published survey asked it.
-    $("ppl-line").hidden = !(R.ppl && !practicing);
-    if (R.ppl && !practicing) $("ppl-line").innerHTML = `People said <b>${num(R.ppl.guess)}${R.unit}</b>`;
     if (!practicing) {
       results.push({ lo, hi, pts, base, inside });
       if (!preview) store.set(progKey(today.no), { results, open: -1 });
@@ -1116,7 +1114,7 @@
     else {
       tutBanner(inside ? "You got it! Gold line = the answer. Tap the yellow button" : "Gold line = the answer. Catch it to score. Tap the yellow button"); $("next").classList.add("spot");
     }
-    for (const id of ["sure", "type-hint"]) $(id).hidden = true;
+    $("sure").hidden = true; $("timer-row").hidden = true; $("type-tag").hidden = true;   // the clock and hint have nothing left to say once you lock in
 
     // The truth drops onto the track.
     $("truth").style.left = pos(R.truth) + "%"; $("truth-tag").style.left = pos(R.truth) + "%";
@@ -1126,7 +1124,9 @@
     const vt = !inside ? (R.truth < c ? "Too high. Missed." : "Too low. Missed.")
       : base === 100 ? "Dead on." : base >= 60 ? "Tight and right." : base >= 25 ? "Caught it." : "Played it safe.";
     $("vt").textContent = vt;
-    $("vs").textContent = `You said ${num(c)}${R.unit}${g ? `, give or take ${num(g)}` : ", exactly"}. The answer is ${num(R.truth)}${R.unit}.` + (m > 1 && inside ? ` ${base} × ${m} = ${num(pts)}.` : "");
+    // What real people guessed, when a published survey asked it.
+    $("vs").textContent = `The answer is ${num(R.truth)}${R.unit}.` + (m > 1 && inside ? ` ${base} × ${m} = ${num(pts)}.` : "") +
+      (R.ppl && !practicing ? ` People said ${num(R.ppl.guess)}${R.unit}.` : "");
     $("pts").classList.toggle("zero", !inside);
     $("why-t").textContent = R.why; $("why-s").textContent = "Source: " + R.src;
     $("verdict").hidden = false; $("why").hidden = practicing; $("next").hidden = false;
@@ -1266,7 +1266,7 @@
         `<div class="vs">You said ${you} · Answer <b>${num(R.truth)}${R.unit}</b></div>` +
         `<div class="mini"><div class="f" style="left:${p(x.lo)}%;width:${x.skipped ? 0 : p(x.hi) - p(x.lo)}%"></div><div class="t" style="left:${p(R.truth)}%"></div></div>` +
         `<div class="fun">${esc(R.fun || R.why)}</div>` +
-        `<div class="src">${R.fun ? esc(R.why) + "<br>" : ""}<b>Source:</b> ${esc(R.src)}</div></div>`;
+        `<div class="src"><b>Source:</b> ${esc(R.src)}</div></div>`;
     }).join("");
 
     // The share: one pixel square per round (the same colors as the answer cards), the score, where you got to.
