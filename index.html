@@ -325,6 +325,12 @@
   .spark { position: fixed; z-index: 30; width: 8px; height: 8px; margin: -4px 0 0 -4px; pointer-events: none; box-shadow: 0 0 0 2px var(--ink);
     animation: spark 700ms steps(6) both; }
   @keyframes spark { from { transform: translate(0, 0) scale(.4); } 70% { opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
+  .streak-banner { position: fixed; z-index: 45; left: 50%; top: 22%; transform: translateX(-50%); background: var(--gold); color: var(--ink);
+    padding: 14px 22px 12px; text-align: center; display: grid; gap: 2px; box-shadow: 0 0 0 var(--u) var(--ink), 8px 8px 0 var(--u) rgba(0, 0, 0, .45);
+    animation: bannerPop 360ms steps(4); pointer-events: none; white-space: nowrap; }
+  .streak-banner b { font-family: var(--display); font-weight: 400; font-size: 46px; line-height: 1; }
+  .streak-banner span { font-family: var(--label); font-size: 16px; }
+  @keyframes bannerPop { from { transform: translateX(-50%) scale(1.6); } }
   /* a chip squishes when you tap it */
   .chip.press { animation: press 200ms steps(3); }
   @keyframes press { 40% { transform: scale(.9); } }
@@ -698,6 +704,12 @@
     crunch: () => [140, 110, 90].forEach((f, i) => tone(f, 0.06, i * 0.05, "sawtooth", 0.05)),
     fanfare: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.09, i * 0.09, "square", 0.04)),
     flip: () => { tone(988, 0.03, 0, "square", 0.03); tone(1319, 0.05, 0.04, "square", 0.03); },
+    // So close: a little sad trombone, different from a flat miss.
+    nearly: () => [392, 370, 349, 294].forEach((f, i) => tone(f, i === 3 ? 0.45 : 0.16, 0.25 + i * 0.18, "triangle", 0.06)),
+    // The final seconds: each tick a little higher.
+    countdown: (sec) => { tone(660 + (6 - sec) * 140, 0.04, 0, "square", 0.05); if (sec <= 3) tone(660 + (6 - sec) * 140, 0.03, 0.12, "square", 0.035); },
+    streak: () => [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 0.1, i * 0.07, "square", 0.04)),
+    warp: () => { for (let i = 0; i < 10; i++) tone(200 + i * 120, 0.08, i * 0.05, "sawtooth", 0.025); },
   };
   $("sound").addEventListener("click", () => {
     soundOn = !soundOn; $("sound").textContent = soundOn ? "SND ON" : "SND OFF"; $("sound").setAttribute("aria-pressed", soundOn);
@@ -737,6 +749,18 @@
   }
   function paintStars(t) {
     sctx.clearRect(0, 0, sc.width, sc.height);
+    // Warp speed (the logo secret): stars streak out from the middle.
+    if (t < warpUntil) {
+      const cx = sc.width / 2, cy = sc.height / 2, k = 1 - (warpUntil - t) / 3500;
+      for (const st of stars) {
+        const dx = st.x - cx, dy = st.y - cy, phase = ((t / 600 + st.ph) % 1);
+        const x = cx + dx * (0.2 + phase * 2), y = cy + dy * (0.2 + phase * 2);
+        sctx.fillStyle = phase > 0.6 ? "#FFF1E8" : "#9EA9D4";
+        const len = 2 + Math.round(phase * 9 * Math.sin(k * Math.PI));
+        for (let j = 0; j < len; j++) sctx.fillRect(Math.round(x - dx * 0.04 * j), Math.round(y - dy * 0.04 * j), 1, 1);
+      }
+      return;
+    }
     for (const s of stars) {
       const on = reduce ? 0.6 : (Math.sin(s.ph + t / 1000 * s.sp) + 1) / 2;
       sctx.fillStyle = on > 0.75 ? "#FFF1E8" : on > 0.35 ? "#6C7BB8" : "#2E3E78";
@@ -802,7 +826,12 @@
   }
   document.addEventListener("pointerdown", tapSky, { passive: true });
   // The logo does a little flip when you tap it.
-  $("logo").addEventListener("click", () => { const l = $("logo"); l.classList.remove("flip"); void l.offsetWidth; l.classList.add("flip"); sfx.flip(); haptic(); });
+  let logoTaps = [], warpUntil = 0;
+  $("logo").addEventListener("click", () => {
+    const l = $("logo"); l.classList.remove("flip"); void l.offsetWidth; l.classList.add("flip"); sfx.flip(); haptic();
+    const now = performance.now(); logoTaps = logoTaps.filter((t) => now - t < 4000).concat(now);
+    if (logoTaps.length >= 10 && !reduce) { logoTaps = []; warpUntil = now + 3500; sfx.warp(); haptic(true); }   // shh, secret
+  });
   FLY.bit = [["b"], { b: "#AB5236" }];
   function paintFlyers(now, dt) {
     for (let i = flyers.length - 1; i >= 0; i--) {
@@ -1178,7 +1207,7 @@
     timer = setInterval(() => {
       const left = Math.max(0, (endsAt - performance.now()) / 1000);
       const sec = Math.ceil(left);
-      if (sec !== lastSec) { lastSec = sec; if (sec > 0) sfx.tick(sec <= 5); }
+      if (sec !== lastSec) { lastSec = sec; if (sec > 5) sfx.tick(false); else if (sec > 0) sfx.countdown(sec); }
       paintTimer(left);
       if (left <= 0) lockIn();
     }, 100);
@@ -1219,7 +1248,8 @@
     $("truth-tag").textContent = num(R.truth) + R.unit;
     for (const id of ["truth", "truth-tag"]) { const el = $(id); el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; }
 
-    const vt = !inside ? (R.truth < c ? "Too high. Missed." : "Too low. Missed.")
+    const nearMiss = !inside && Math.max(lo - R.truth, R.truth - hi) <= span(R) * 0.08;
+    const vt = !inside ? (nearMiss ? "So close!" : R.truth < c ? "Too high. Missed." : "Too low. Missed.")
       : base === 100 ? "Dead on." : base >= 60 ? "Tight and right." : base >= 25 ? "Caught it." : "Played it safe.";
     $("vt").textContent = vt;
     // What real people guessed, when a published survey asked it.
@@ -1231,7 +1261,7 @@
     $("next").textContent = practicing ? (played(today.no) ? "SEE YOUR RESULT" : "START TODAY'S CASE") : ri === CASE.length - 1 ? "SEE YOUR CASE" : "NEXT ROUND";
     countUp($("pts"), pts);
     document.querySelector(".screen").scrollIntoView({ block: "start" });
-    inside ? sfx.hit(base) : sfx.miss();
+    inside ? sfx.hit(base) : nearMiss ? sfx.nearly() : sfx.miss();
     if (inside && !reduce) sparkleAt($("truth"), base >= 100 ? 14 : base >= 60 ? 10 : 6);
     $("next").focus({ preventScroll: true });
   }
@@ -1246,6 +1276,25 @@
       p.style.animationDelay = 280 + Math.random() * 120 + "ms";
       document.body.appendChild(p); setTimeout(() => p.remove(), 1300);
     }
+  }
+  // Pixel fireworks and a banner for streak milestones.
+  function celebrateStreak(n) {
+    const b = document.createElement("div");
+    b.className = "streak-banner"; b.innerHTML = `<b>${n}-DAY STREAK!</b><span>${n >= 30 ? "Legendary." : n >= 7 ? "You're on fire." : "Keep it going!"}</span>`;
+    document.body.appendChild(b); setTimeout(() => b.remove(), 3200);
+    sfx.streak(); haptic(true);
+    if (reduce) return;
+    for (let w = 0; w < 4; w++) setTimeout(() => {
+      const cx = innerWidth * (0.2 + Math.random() * 0.6), cy = innerHeight * (0.15 + Math.random() * 0.45);
+      for (let i = 0; i < 14; i++) {
+        const p = document.createElement("i"), a = (i / 14) * Math.PI * 2, d = 50 + Math.random() * 40;
+        p.className = "spark"; p.style.left = cx + "px"; p.style.top = cy + "px";
+        p.style.setProperty("--dx", Math.round(Math.cos(a) * d / 4) * 4 + "px"); p.style.setProperty("--dy", Math.round(Math.sin(a) * d / 4) * 4 + "px");
+        p.style.background = ["var(--gold)", "#FF77A8", "var(--a)", "var(--paper)"][(i + w) % 4];
+        document.body.appendChild(p); setTimeout(() => p.remove(), 1000);
+      }
+      tone(900 + w * 150, 0.06, 0, "triangle", 0.04);
+    }, 250 + w * 380);
   }
   function countUp(el, to, commas) {
     const show = (v) => commas ? v.toLocaleString("en-US") : v;
@@ -1468,7 +1517,9 @@
     const grid = results.map(square).join("");
     if (!again && !preview) {
       const entry = { no: today.no, date: today.date, theme: today.theme, total, results };
-      store.set(playedKey(today.no), entry); bumpStreak(today.no);
+      store.set(playedKey(today.no), entry);
+      const sk = streaks(localEntries().map((x) => x.no)).cur; bumpStreak(today.no);
+      if ([3, 7, 14, 30, 50, 100].includes(sk)) setTimeout(() => celebrateStreak(sk), 1400);
       document.dispatchEvent(new CustomEvent("ce:played", { detail: entry }));
     }
     const WHERE = { sats: "low orbit", rocks: "the asteroid belt", moon: "the Moon", mars: "Mars", comet: "a comet", giant: "the gas giant",
@@ -1644,6 +1695,7 @@
     "...G.G...",
   ].map((r) => (r + ".........").slice(0, 9));
   const ALIEN = [0, 1, 2, 3].map((k) => sprite(alienRows(k & 1, k & 2), APAL));   // [open, blink, open+wave, blink+wave]
+  const ROVER = sprite(["...W...", "..WWW..", "WWWWWWW", "WCWWWCW", ".K.K.K."], { W: "#C2C3C7", C: "#29ADFF", K: "#0A1029" });
   const HEART = sprite([".P.P.", "PPPPP", "PPPPP", ".PPP.", "..P.."], { P: "#FF77A8" });
   function rock(seed, r) {
     const [c, x] = off(r * 2 + 2, r * 2 + 2);
@@ -1843,9 +1895,12 @@
 
   // ---------- Greetings: whoever lives at the stop you reached says hi ----------
   const LINES = {
-    sats: ["BEEP BOOP! HI!"], rocks: ["WATCH IT, PAL!"], moon: ["OH HI! NICE SHIP!"], mars: ["HONK HONK! - ROVER"],
-    comet: ["CATCH ME!"], giant: ["WHEEE! SLINGSHOT!"], ufo: ["HI EARTHLING!", "WE COME IN PEACE", "U R SO SMART", "COME BACK TMRW!"],
-    nebula: ["SHH... BABY STARS"], nova: ["KA-BOOOM!"], hole: ["DON'T LOOK DOWN"],
+    sats: ["BEEP BOOP! HI!", "BOOP BEEP?", "SIGNAL: FRIENDLY"], rocks: ["WATCH IT, PAL!", "OOF. ROCKY.", "STILL HERE!"],
+    moon: ["OH HI! NICE SHIP!", "*WINK*", "SEE YOU TONIGHT"], mars: ["HONK HONK! - ROVER", "BEEP! FOUND A ROCK", "HONK!"],
+    comet: ["CATCH ME!", "TOO SLOW!", "ZOOOM"], giant: ["WHEEE! SLINGSHOT!", "AGAIN! AGAIN!", "SO MUCH GAS"],
+    ufo: ["HI EARTHLING!", "WE COME IN PEACE", "U R SO SMART", "COME BACK TMRW!"],
+    nebula: ["SHH... BABY STARS", "*TWINKLE*", "A STAR IS BORN"], nova: ["KA-BOOOM!", "DO IT AGAIN!", "BOOM BOOM!"],
+    hole: ["DON'T LOOK DOWN", "SLUUURP", "NOM NOM STARS"],
   };
   const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, comet: 0.36, nebula: 0.9, sats: 0.5, nova: 0.55 };
   let greet = null;   // { st, at, line, poke }
@@ -1861,8 +1916,10 @@
   function poke() {
     if (!greet) return;
     greet.poke = performance.now(); greet.line++;
-    if (greet.st.key === "ufo") { sfx.aliens(); alienVoice(LINES.ufo[greet.line % LINES.ufo.length].toLowerCase().replace("u r", "you are").replace("tmrw", "tomorrow")); }
-    else sfx.pass(greet.st.key);
+    const k = greet.st.key;
+    if (k === "ufo") { sfx.aliens(); alienVoice(LINES.ufo[greet.line % LINES.ufo.length].toLowerCase().replace("u r", "you are").replace("tmrw", "tomorrow")); }
+    else if (sfx.react[k]) sfx.react[k]();
+    else sfx.pass(k);
   }
   function drawBubble(text, sx, sy) {
     ctx.font = "16px 'Jersey 10', monospace"; ctx.textBaseline = "middle";
@@ -1875,12 +1932,12 @@
     ctx.fillStyle = "#0A1029"; ctx.fillText(text, bx + 7, by + bh / 2 + 1);
   }
   // A kawaii face for the round things (eyes blink, cheeks blush).
-  function drawFace(x0, y0, S, now, seed) {
-    const blink = (now + seed * 777) % 3400 < 150;
+  function drawFace(x0, y0, S, now, seed, winkAt) {
+    const blink = (now + seed * 777) % 3400 < 150, wink = winkAt && now - winkAt < 700;
     const px = (dx, dy, w, h, col) => { const a = proj(x0 + dx * S, y0 + dy * S, 0), b = proj(x0 + (dx + w) * S, y0 + (dy + h) * S, 0); if (!a || !b) return;
       ctx.fillStyle = col; ctx.fillRect(Math.round(a.x), Math.round(a.y), Math.max(1, Math.round(b.x - a.x)), Math.max(1, Math.round(b.y - a.y))); };
     for (const ex of [-0.2, 0.12]) {
-      if (blink) px(ex, 0.0, 0.08, 0.025, "#0A1029");
+      if (blink || (wink && ex > 0)) px(ex, 0.0, 0.08, 0.025, "#0A1029");
       else { px(ex, -0.06, 0.08, 0.1, "#0A1029"); px(ex + 0.02, -0.05, 0.03, 0.03, "#FFF1E8"); }
     }
     px(-0.3, 0.07, 0.07, 0.04, "#FF77A8"); px(0.23, 0.07, 0.07, 0.04, "#FF77A8");
@@ -1913,7 +1970,26 @@
       }
     } else {
       drawStop(st, now, true);
-      if (st.key === "moon" || st.key === "mars" || st.key === "giant") drawFace(x0, y0, S, now, st.p * 10);
+      if (st.key === "moon" || st.key === "mars" || st.key === "giant") drawFace(x0, y0, S, now, st.p * 10, st.key === "moon" ? greet.poke : 0);
+      const since = greet.poke ? now - greet.poke : 1e9;
+      // Mars: the rover rolls out to say hi.
+      if (st.key === "mars" && since < 1600) drawSprite(ROVER, x0 + (0.45 + Math.min(1, since / 400) * 0.15) * S, y0 + 0.42 * S, z, S * 0.28);
+      // The black hole slurps nearby stars in a spiral.
+      if (st.key === "hole" && since < 1200) {
+        for (let i = 0; i < 28; i++) {
+          const k = Math.min(1, since / 1200), a = i * 0.9 + k * 6, r = (1.1 - k) * (0.6 + (i % 5) * 0.12) * S;
+          const q = proj(x0 + Math.cos(a) * r, y0 + Math.sin(a) * r * 0.5, z); if (!q) continue;
+          ctx.fillStyle = i % 3 ? "#FFF1E8" : "#FF77A8"; ctx.fillRect(Math.round(q.x), Math.round(q.y), 2, 2);
+        }
+      }
+      // The nebula and the supernova throw off sparkles.
+      if ((st.key === "nebula" || st.key === "nova") && since < 1000) {
+        for (let i = 0; i < 16; i++) {
+          const a = i / 16 * Math.PI * 2, r = (0.3 + since / 1000 * 0.5) * S;
+          const q = proj(x0 + Math.cos(a) * r, y0 + Math.sin(a) * r, z); if (!q || (Math.floor(since / 80) + i) % 2) continue;
+          ctx.fillStyle = i % 2 ? "#FFEC27" : "#FFF1E8"; ctx.fillRect(Math.round(q.x), Math.round(q.y), 2, 2);
+        }
+      }
     }
     focusFn = null;
     if (now - greet.at > 450) {
@@ -2150,6 +2226,18 @@
       hiss(0.75, 1.6, 120, 900, 0.35, 0.6);                     // engine roar building
       for (let i = 0; i < 10; i++) tone(55 + i * 4, 0.12, 0.75 + i * 0.1, "sawtooth", 0.035);  // low rumble
       hiss(1.55, 0.5, 400, 3500, 0.25, 1.4);                    // whoosh as it passes you
+    },
+    // What each stop does when you tap it.
+    react: {
+      mars: () => { tone(392, 0.09, 0, "square", 0.06); tone(392, 0.12, 0.14, "square", 0.06); },            // honk honk
+      hole: () => { const a = audio(); if (!a) return; for (let i = 0; i < 6; i++) tone(900 - i * 130, 0.07, i * 0.05, "sawtooth", 0.03); hiss(0, 0.5, 1800, 120, 0.15, 1.2); },   // slurp
+      moon: () => { tone(1568, 0.05, 0, "sine", 0.05); tone(2093, 0.09, 0.06, "sine", 0.05); },              // wink
+      nebula: () => [2093, 2637, 3136, 2637].forEach((f, i) => tone(f, 0.05, i * 0.07, "triangle", 0.03)),   // twinkle
+      nova: () => { hiss(0, 0.5, 2000, 80, 0.25, 1); tone(110, 0.25, 0, "square", 0.06); },                  // boom
+      comet: () => hiss(0, 0.45, 6000, 800, 0.15, 1.5),                                                       // whoosh
+      giant: () => { tone(200, 0.1, 0, "sine", 0.08); tone(400, 0.12, 0.1, "sine", 0.07); },                // boing
+      sats: () => { tone(1760, 0.04, 0, "square", 0.03); tone(1319, 0.05, 0.07, "square", 0.03); },
+      rocks: () => [140, 110].forEach((f, i) => tone(f, 0.06, i * 0.06, "sawtooth", 0.05)),
     },
     // Alien chatter: quick happy chirps.
     aliens() {
