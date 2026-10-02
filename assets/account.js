@@ -66,6 +66,33 @@ async function tally(entry) {
   });
 }
 
+// Which marketing link brought this device here (?r=webgames, ?r=x ...). First link wins, kept 30 days.
+// The tag is removed from the address bar so shared links stay clean. Only anonymous counts are stored.
+const SRC_KEY = "fifty-src";
+function source() {
+  try {
+    const url = new URL(location.href), tag = (url.searchParams.get("r") || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24);
+    if (tag) {
+      url.searchParams.delete("r"); history.replaceState(null, "", url.pathname + url.search + url.hash);
+      const had = JSON.parse(localStorage.getItem(SRC_KEY) || "null");
+      if (!had || Date.now() - had.at > 30 * 864e5) { localStorage.setItem(SRC_KEY, JSON.stringify({ tag, at: Date.now() })); return { tag, fresh: true }; }
+    }
+    const had = JSON.parse(localStorage.getItem(SRC_KEY) || "null");
+    return had && Date.now() - had.at <= 30 * 864e5 ? { tag: had.tag, fresh: false } : null;
+  } catch (e) { return null; }
+}
+const SRC = CE.preview ? null : source();
+async function bumpSource(field) {
+  if (!SRC) return;
+  const ref = doc(db, "sources", SRC.tag);
+  await runTransaction(db, async (tx) => {
+    const cur = await tx.get(ref), d = cur.exists() ? cur.data() : {};
+    const next = { visits: d.visits || 0, plays: d.plays || 0 }; next[field] += 1;
+    if (cur.exists()) tx.update(ref, next); else tx.set(ref, next);
+  });
+}
+if (SRC && SRC.fresh) bumpSource("visits").catch(() => {});
+
 // Each finished game is counted once per device. If counting failed (offline, or the game was
 // played on an older version of the site), it catches up the next time the page opens.
 const countedKey = (no) => "fifty-counted-" + no;
@@ -75,6 +102,7 @@ async function count(entry) {
   if (CE.preview || !entry || !(entry.no > 0) || isCounted(entry.no)) return;
   await tally(entry);
   markCounted(entry.no);
+  bumpSource("plays").catch(() => {});
 }
 // Catch up on recent days played here but never counted (only the last few days, so old history isn't re-counted).
 for (const e of CE.localEntries()) if (e.no >= CE.todayNo() - 2) count(e).catch(() => {});
