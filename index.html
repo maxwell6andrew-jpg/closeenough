@@ -251,13 +251,23 @@
   .total b { font-family: var(--display); font-weight: 400; font-size: 120px; line-height: 0.8; color: var(--gold); font-variant-numeric: tabular-nums; }
   .mirror { padding: 18px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); display: grid; gap: 6px; }
   .mirror .vt { color: var(--gold); font-size: 26px; }
-  .recap { display: grid; gap: 10px; }
-  .rc { display: grid; grid-template-columns: 1fr 44px; gap: 10px; align-items: center; }
+  /* Your answers: one little card per round, with a fun note and its source. */
+  .recap { display: grid; gap: 12px; }
+  .recap-h { margin: 4px 0 -2px; }
+  .rc { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 12px 14px 12px; display: grid; gap: 7px; }
+  .rc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .rc-tag { font-family: var(--display); font-size: 22px; line-height: 1; color: var(--paper); letter-spacing: .02em; }
+  .rc-tag.miss { color: var(--b); }
+  .rc .p { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--gold); white-space: nowrap; }
+  .rc .q { font-size: 14px; line-height: 1.35; color: var(--paper); }
+  .rc .vs { font-size: 13px; color: var(--muted); }
+  .rc .vs b { color: var(--gold); font-weight: 400; }
   .rc .mini { position: relative; height: 10px; background: var(--ink); }
-  .rc .mini .f { position: absolute; top: 0; bottom: 0; background: var(--a); }
+  .rc .mini .f { position: absolute; top: 0; bottom: 0; background: var(--a); min-width: 3px; margin-left: -1px; }
   .rc .mini .t { position: absolute; top: -4px; bottom: -4px; width: 4px; margin-left: -2px; background: var(--gold); }
-  .rc .q { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
-  .rc .p { font-family: var(--display); font-size: 26px; text-align: right; color: var(--gold); }
+  .rc .fun { font-size: 15px; line-height: 1.4; color: var(--paper); background: var(--panel); padding: 8px 10px; box-shadow: 0 0 0 2px var(--ink); }
+  .rc .src { font-size: 11px; line-height: 1.45; color: var(--muted); }
+  .rc .src b { font-weight: 400; color: var(--paper); }
   .sharebox { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 14px; font-size: 15px; white-space: pre-wrap; line-height: 1.45; }
   .spot { outline: var(--u) solid var(--gold); outline-offset: 6px; animation: spot 900ms steps(2) infinite; position: relative; z-index: 1; }
   @keyframes spot { 50% { outline-color: transparent; } }
@@ -446,6 +456,7 @@
       </div>
       <div class="total"><span class="lbl">Your score</span><b id="total">0</b><span class="lbl">out of 1,000</span></div>
       <div class="mirror"><span class="lbl">What this says about you</span><div class="vt" id="m-title"></div><div class="vs" id="m-sub"></div></div>
+      <span class="lbl recap-h">Your answers</span>
       <div class="recap" id="recap"></div>
       <div class="sharebox" id="share"></div>
       <div class="row2"><button class="btn" id="copy" style="font-size:26px">COPY</button><button class="btn ghost" id="again">BACK</button></div>
@@ -1136,7 +1147,7 @@
     };
     hopTo.close = close;
     // If animation frames stall (a backgrounded tab), never leave the player stuck.
-    const safety = setTimeout(() => { L.skip(); close(); }, 6500);
+    const safety = setTimeout(() => { L.skip(); close(); }, 10000);
     L.muted = !soundOn;
     L.hop(from, to, L.planetFor(today.no), miss, () => close());
   }
@@ -1176,9 +1187,24 @@
     $("m-title").textContent = title;
     $("m-sub").textContent = `${sub} You caught the truth ${hits} of ${results.length} times.`;
 
+    // A cute reaction for each round, your window vs. the answer, a fun note, and where the number comes from.
+    const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+    const tagFor = (x, R) => {
+      if (x.skipped) return ["💤 SKIPPED", true];
+      if (!x.inside) return Math.max(x.lo - R.truth, R.truth - x.hi) <= span(R) * 0.08 ? ["💫 SO CLOSE!", true] : ["🙈 WHOOPS", true];
+      const b = x.base ?? x.pts;
+      return b >= 100 ? ["🎯 BULLSEYE!"] : b >= 60 ? ["🔥 NAILED IT"] : b >= 25 ? ["⭐ NICE ONE"] : ["✅ PLAYED IT SAFE"];
+    };
     $("recap").innerHTML = results.map((x, i) => {
       const R = CASE[i], p = (v) => Math.min(100, Math.max(0, ((v - R.min) / span(R)) * 100));
-      return `<div class="rc"><div><div class="q">${R.q}</div><div class="mini"><div class="f" style="left:${p(x.lo)}%;width:${x.skipped ? 0 : p(x.hi) - p(x.lo)}%"></div><div class="t" style="left:${p(R.truth)}%"></div></div></div><div class="p">${x.pts}</div></div>`;
+      const [tag, miss] = tagFor(x, R);
+      const you = x.skipped ? "no answer" : x.lo === x.hi ? `${num(x.lo)}${R.unit}` : `${num(Math.max(R.min, x.lo))} to ${num(Math.min(R.max, x.hi))}${R.unit}`;
+      return `<div class="rc"><div class="rc-top"><span class="rc-tag${miss ? " miss" : ""}">${tag}</span><span class="p">+${num(x.pts)}</span></div>` +
+        `<div class="q">${esc(R.q)}</div>` +
+        `<div class="vs">You said ${you} · Answer <b>${num(R.truth)}${R.unit}</b></div>` +
+        `<div class="mini"><div class="f" style="left:${p(x.lo)}%;width:${x.skipped ? 0 : p(x.hi) - p(x.lo)}%"></div><div class="t" style="left:${p(R.truth)}%"></div></div>` +
+        `<div class="fun">${esc(R.fun || R.why)}</div>` +
+        `<div class="src">${R.fun ? esc(R.why) + "<br>" : ""}<b>Source:</b> ${esc(R.src)}</div></div>`;
     }).join("");
 
     // One emoji per round: 🎯 exact · 🔥 great · ⭐ decent · ✅ played it safe · ❌ miss
@@ -1342,6 +1368,21 @@
     "...GG.....GG...",
   ], { C: "#7CE3A1", W: "#FFF1E8", G: "#C2C3C7", Y: "#FFEC27" }, 2);
   const ALIEN_WAVE = sprite(["G.G", "GGG", ".G."], { G: "#00E436" }, 2);
+  // The alien crew: big eyes, antennae, a smile, and one arm that waves.
+  const APAL = { G: "#00E436", D: "#008751", W: "#FFF1E8", K: "#0A1029", Y: "#FFEC27", P: "#FF77A8" };
+  const alienRows = (blink, armUp) => [
+    "..Y...Y..",
+    "...D.D...",
+    "..GGGGG..",
+    blink ? ".GGGGGGG." : ".GWWGWWG.",
+    blink ? ".GKKGKKG." : ".GWKGWKG.",
+    (armUp ? "" : "") + ".GPGGGPG" + (armUp ? "G" : "."),
+    ".GGKKKGG" + (armUp ? "G" : "."),
+    (armUp ? "..GGGGG.G" : "G.GGGGG.G"),
+    "...G.G...",
+  ].map((r) => (r + ".........").slice(0, 9));
+  const ALIEN = [0, 1, 2, 3].map((k) => sprite(alienRows(k & 1, k & 2), APAL));   // [open, blink, open+wave, blink+wave]
+  const HEART = sprite([".P.P.", "PPPPP", "PPPPP", ".PPP.", "..P.."], { P: "#FF77A8" });
   function rock(seed, r) {
     const [c, x] = off(r * 2 + 2, r * 2 + 2);
     for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
@@ -1515,7 +1556,9 @@
   const cz = () => Zat(prog);
 
   // Project a world point. Returns null if it's behind the camera.
-  function proj(x, y, z) {
+  let focusFn = null;
+  function proj(x, y, z) { return focusFn ? focusFn(x, y, z) : projRaw(x, y, z); }
+  function projRaw(x, y, z) {
     const d = cz() - z;
     if (d <= 0.05) return null;
     const s = F / d;
@@ -1534,6 +1577,88 @@
       const A = h(a), B = h(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(",")})`; };
     if (p < 0.06) return mix(shade(PLANETS[planetKey].sky, 0.35).replace(/rgb\((\d+),(\d+),(\d+)\)/, (_, r, g, b) => "#" + [r, g, b].map((v) => (+v).toString(16).padStart(2, "0")).join("")), "#05081A", Math.floor(p / 0.06 * 5) / 5);
     return mix("#05081A", "#1A0B2E", Math.min(1, (p - 0.06) / 0.9));
+  }
+
+  // ---------- Greetings: whoever lives at the stop you reached says hi ----------
+  const LINES = {
+    sats: ["BEEP BOOP! HI!"], rocks: ["WATCH IT, PAL!"], moon: ["OH HI! NICE SHIP!"], mars: ["HONK HONK! - ROVER"],
+    comet: ["CATCH ME!"], giant: ["WHEEE! SLINGSHOT!"], ufo: ["HI EARTHLING!", "WE COME IN PEACE", "U R SO SMART", "COME BACK TMRW!"],
+    nebula: ["SHH... BABY STARS"], nova: ["KA-BOOOM!"], hole: ["DON'T LOOK DOWN"],
+  };
+  const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, comet: 0.36, nebula: 0.9, sats: 0.5, nova: 0.55 };
+  let greet = null;   // { st, at, line, poke }
+  function stopCenter(st) {
+    if (st.key === "rocks") return [0, 0];
+    const R = st.off * st.z; return [Math.cos(st.ang) * R, Math.sin(st.ang) * R];
+  }
+  function startGreet(st, now) {
+    if (!st || st.key === "whale" || !LINES[st.key]) return;
+    greet = { st, at: now, line: 0, poke: 0 };
+    if (st.key === "ufo") { sfx.aliens(); alienVoice("Hi, Earthling!"); }
+  }
+  function poke() {
+    if (!greet) return;
+    greet.poke = performance.now(); greet.line++;
+    if (greet.st.key === "ufo") { sfx.aliens(); alienVoice(LINES.ufo[greet.line % LINES.ufo.length].toLowerCase().replace("u r", "you are").replace("tmrw", "tomorrow")); }
+    else sfx.pass(greet.st.key);
+  }
+  function drawBubble(text, sx, sy) {
+    ctx.font = "16px 'Jersey 10', monospace"; ctx.textBaseline = "middle";
+    const tw = Math.ceil(ctx.measureText(text).width), bw = tw + 14, bh = 18;
+    const bx = Math.round(Math.min(W - bw - 4, Math.max(4, sx - bw / 2))), by = Math.round(Math.max(30, sy - bh));
+    ctx.fillStyle = "#0A1029"; ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    ctx.fillStyle = "#FFF1E8"; ctx.fillRect(bx, by, bw, bh);
+    const tx = Math.round(Math.min(bx + bw - 10, Math.max(bx + 6, sx)));
+    ctx.fillRect(tx, by + bh, 4, 3); ctx.fillRect(tx + 1, by + bh + 3, 2, 2);
+    ctx.fillStyle = "#0A1029"; ctx.fillText(text, bx + 7, by + bh / 2 + 1);
+  }
+  // A kawaii face for the round things (eyes blink, cheeks blush).
+  function drawFace(x0, y0, S, now, seed) {
+    const blink = (now + seed * 777) % 3400 < 150;
+    const px = (dx, dy, w, h, col) => { const a = proj(x0 + dx * S, y0 + dy * S, 0), b = proj(x0 + (dx + w) * S, y0 + (dy + h) * S, 0); if (!a || !b) return;
+      ctx.fillStyle = col; ctx.fillRect(Math.round(a.x), Math.round(a.y), Math.max(1, Math.round(b.x - a.x)), Math.max(1, Math.round(b.y - a.y))); };
+    for (const ex of [-0.2, 0.12]) {
+      if (blink) px(ex, 0.0, 0.08, 0.025, "#0A1029");
+      else { px(ex, -0.06, 0.08, 0.1, "#0A1029"); px(ex + 0.02, -0.05, 0.03, 0.03, "#FFF1E8"); }
+    }
+    px(-0.3, 0.07, 0.07, 0.04, "#FF77A8"); px(0.23, 0.07, 0.07, 0.04, "#FF77A8");
+    px(-0.07, 0.1, 0.03, 0.03, "#0A1029"); px(-0.04, 0.13, 0.08, 0.03, "#0A1029"); px(0.04, 0.1, 0.03, 0.03, "#0A1029");
+  }
+  function drawGreet(now) {
+    const st = greet.st, z = st.z, S = st.size * st.z, [x0, y0] = stopCenter(st);
+    const e = 1 - Math.pow(1 - Math.min(1, (now - greet.at) / 650), 3);
+    const n = projRaw(x0, y0, z) || { x: CX, y: CY, s: 0 };
+    const worldW = st.key === "rocks" ? 2 * st.z : S;
+    const sF = (W * (FOCUS_PX[st.key] || 0.48)) / worldW;
+    const jump = greet.poke ? Math.max(0, 1 - (now - greet.poke) / 500) : 0;
+    const s = n.s + (sF - n.s) * e, cx = n.x + (CX - n.x) * e, cy = n.y + (CY + 18 - n.y) * e - Math.sin(jump * Math.PI) * 10;
+    focusFn = (x, y) => ({ x: cx + (x - x0) * s, y: cy + (y - y0) * s, s, d: 1 });
+    if (st.key === "ufo") {
+      const tt = now / 1000;
+      // three little aliens pop up behind the dome, bobbing out of step
+      [-0.3, 0, 0.3].forEach((ax, i) => {
+        const up = Math.min(1, Math.max(0, (now - greet.at - 250 - i * 160) / 300));
+        const bob = Math.sin(tt * 5 + i * 2) * 0.03 + Math.sin(jump * Math.PI) * 0.12 * (i === 1 ? 1.4 : 1);
+        const blink = (now + i * 900) % 2600 < 140 ? 1 : 0, wave = Math.floor(tt * 4 + i) % 2 ? 2 : 0;
+        drawSprite(ALIEN[blink + wave], x0 + ax * S, y0 - (0.06 + 0.32 * up + bob) * S, z, S * 0.3);
+      });
+      drawSprite(UFO, x0, y0, z, S);
+      // floating hearts
+      for (let k = 0; k < 3; k++) {
+        const ph = ((now - greet.at) / 1400 + k / 3) % 1;
+        if (now - greet.at < 600) break;
+        drawSprite(HEART, x0 + (k - 1) * 0.35 * S + Math.sin(ph * 6 + k) * 0.05 * S, y0 - (0.55 + ph * 0.5) * S, z, S * 0.09);
+      }
+    } else {
+      drawStop(st, now, true);
+      if (st.key === "moon" || st.key === "mars" || st.key === "giant") drawFace(x0, y0, S, now, st.p * 10);
+    }
+    focusFn = null;
+    if (now - greet.at > 450) {
+      const lines = LINES[st.key], text = st.key === "ufo" ? lines[(greet.line + Math.floor((now - greet.at - 450) / 1300)) % lines.length] : lines[greet.line % lines.length];
+      const top = cy - (st.key === "ufo" ? 0.62 : st.key === "rocks" ? 0.5 : 0.62) * worldW * s - 8;
+      drawBubble(text, cx, top);
+    }
   }
 
   function drawStop(st, now) {
@@ -1669,7 +1794,8 @@
     // home planet (always farthest away)
     drawSprite(planetImg, 0, 0, 0, 20 * planetImg.width / (2 * 120 + 2));
     // the things you pass, nearest drawn last
-    [...STOPS].filter((st) => st.p <= pEnd + 0.001).sort((a, b) => a.z - b.z).forEach((st) => drawStop(st, now));
+    [...STOPS].filter((st) => st.p <= pEnd + 0.001 && (!greet || greet.st !== st)).sort((a, b) => a.z - b.z).forEach((st) => drawStop(st, now));
+    if (greet) drawGreet(now);
 
     if (intro && !drawIntroRocket(now)) { intro = false; t0 = now; running = true; }
     if (!running && !intro && prog === 0) {      // waiting on the pad
@@ -1756,6 +1882,17 @@
       for (let i = 0; i < 10; i++) tone(55 + i * 4, 0.12, 0.75 + i * 0.1, "sawtooth", 0.035);  // low rumble
       hiss(1.55, 0.5, 400, 3500, 0.25, 1.4);                    // whoosh as it passes you
     },
+    // Alien chatter: quick happy chirps.
+    aliens() {
+      const a = audio(); if (!a || (window.Launch && window.Launch.muted)) return;
+      const t = a.currentTime;
+      [880, 1175, 988, 1319, 1047, 1568].forEach((f, i) => {
+        const o = a.createOscillator(), g = a.createGain(), w = i * 0.09 + (i > 2 ? 0.12 : 0);
+        o.type = "sine"; o.frequency.setValueAtTime(f, t + w); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + w + 0.07);
+        g.gain.setValueAtTime(0.0001, t + w); g.gain.exponentialRampToValueAtTime(0.06, t + w + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + w + 0.08);
+        o.connect(g).connect(a.destination); o.start(t + w); o.stop(t + w + 0.1);
+      });
+    },
     // A miss: the engine coughs and dies.
     sputter() {
       for (let i = 0; i < 5; i++) { hiss(i * 0.17, 0.11, 320, 70, 0.32, 1); tone(92 - i * 9, 0.09, i * 0.17, "sawtooth", 0.07); }
@@ -1799,6 +1936,14 @@
     fanfare() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => tone(f, 0.16, i * 0.12)); hiss(0, 1.2, 6000, 300, 0.08, 0.5); },
     arrive() { tone(392, 0.12); tone(523, 0.2, 0.12); },
   };
+  function alienVoice(text) {
+    if (window.Launch && window.Launch.muted) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.pitch = 2; u.rate = 1.25; u.volume = 0.8;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) {}
+  }
   function sayHello() {
     if (window.Launch && window.Launch.muted) return;
     // chip voice: three buzzy syllables, "you-MADE-it"
@@ -1830,7 +1975,7 @@
   let doneCb = null;
   function launch() {
     sfx.humStop();
-    hopping = false; hopCb = null; clearTimeout(hopTimer); pStart = 0;
+    hopping = false; hopCb = null; clearTimeout(hopTimer); pStart = 0; greet = null;
     pEnd = Math.max(0.06, score / 1000);
     dur = reduce ? 1 : 3000 + pEnd * 11000;
     shown = new Set(); whaleAt = 0; helloAt = 0; prog = 0; arrived = false;
@@ -1846,7 +1991,13 @@
   const _arrive = arrive;
   arrive = (now) => {
     if (arrived) return;
-    if (hopping) { arrived = true; running = false; hopping = false; sfx.humStop(); hopTimer = setTimeout(() => { const cb = hopCb; hopCb = null; cb && cb(); }, 700); return; }
+    if (hopping) {
+      arrived = true; running = false; hopping = false; sfx.humStop();
+      const got = [...STOPS].reverse().find((st) => st.p <= pEnd + 0.001 && st.p > pStart + 0.001);
+      if (got && got.key !== "whale") startGreet(got, now);
+      hopTimer = setTimeout(() => { const cb = hopCb; hopCb = null; cb && cb(); }, greet ? (got.key === "ufo" ? 3400 : 2300) : 700);
+      return;
+    }
     _arrive(now); sfx.humStop(); if (score < 1000) sfx.arrive(); if (doneCb) doneCb(); };
   const stopFor = (s) => { const p = Math.max(0.06, s / 1000); const last = [...STOPS].reverse().find((x) => x.p <= p + 0.001); return last ? last.name : "LIFTOFF"; };
   window.Launch = {
@@ -1864,6 +2015,7 @@
       if (planetKey !== key || !hop.drawn) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120); hop.drawn = 1; }
       $("planet-name").textContent = PLANETS[planetKey].name;
       clearTimeout(launch.t1); clearTimeout(launch.t2); clearTimeout(hopTimer); clearTimeout(calloutTimer); sfx.humStop();
+      greet = null;
       hopping = true; hopCb = onDone || null; score = toS; arrived = false; intro = false; running = false;
       pStart = fromS > 0 ? Math.min(1, fromS / 1000) : 0;
       pEnd = miss ? pStart : Math.min(1, Math.max(0.06, toS / 1000));
@@ -1885,6 +2037,7 @@
       pStart = 0; pEnd = Math.max(0.06, s / 1000); prog = pEnd; whaleAt = 0; helloAt = 0;
       shown = new Set(STOPS.filter((st) => st.p <= pEnd + 0.001).map((st) => st.key));
       $("callout").classList.remove("on");
+      greet = null; startGreet([...STOPS].reverse().find((st) => st.p <= pEnd + 0.001), performance.now());
       if (shown.has("whale")) { whaleAt = performance.now() - 2600; setTimeout(() => { helloAt = performance.now(); sayHello(); }, 600); }
       arrive(performance.now());
     },
@@ -1896,7 +2049,7 @@
         const cb = hopCb; hopCb = null; cb(); return;
       }
       if (arrived && hopCb) { clearTimeout(hopTimer); const cb = hopCb; hopCb = null; cb(); return; }
-      if (arrived) return;
+      if (arrived) { poke(); return; }
       clearTimeout(launch.t1); clearTimeout(launch.t2);
       intro = false; running = false; prog = pEnd;
       for (const st of STOPS) if (st.p <= pEnd + 0.001) shown.add(st.key);
