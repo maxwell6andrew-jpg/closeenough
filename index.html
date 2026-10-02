@@ -333,6 +333,10 @@
     .stepper { height: 46px; font-size: 32px; }
     .guess { grid-template-columns: 46px minmax(0, 1fr) 46px; }
     .guess-num span.wordy { font-size: 17px; }
+  }
+  @media (max-width: 340px) {
+    .guess-num .num.long { font-size: 38px; }
+    .guess-num span.wordy { font-size: 13px; }
     .picker { padding-block: 22px 0; }
     .track { height: 50px; }
     .scale { margin-top: 14px; }
@@ -558,8 +562,9 @@
   const nudgeTut = () => { if (practicing && tut < TUT.length) { tutBanner(TUT[tut].sub); tone(520, 0.05); } };
   const tutDid = (step) => { if (practicing && tut === step) setTimeout(() => setTut(step + 1), step === 0 ? 450 : 250); };
   let practicing = false;
-  const seenTutorial = () => { try { return localStorage.getItem("fifty-tutorial") === "1"; } catch (e) { return false; } };
-  const markTutorial = () => { try { localStorage.setItem("fifty-tutorial", "1"); } catch (e) {} };
+  let tutSeenNow = false;   // fallback when storage is blocked
+  const seenTutorial = () => { if (tutSeenNow) return true; try { return localStorage.getItem("fifty-tutorial") === "1"; } catch (e) { return false; } };
+  const markTutorial = () => { tutSeenNow = true; try { localStorage.setItem("fifty-tutorial", "1"); } catch (e) {} };
 
   // ---------- Score: tighter pays more ----------
   const span = (r) => r.max - r.min;
@@ -603,10 +608,12 @@
 
   // ---------- Sound ----------
   let ac = null, soundOn = true;
+  try { soundOn = localStorage.getItem("fifty-sound") !== "off"; } catch (e) {}
   function tone(f, d = 0.06, when = 0, type = "square", vol = 0.05) {
     if (!soundOn) return;
     try {
       ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
       const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
       o.type = type; o.frequency.setValueAtTime(f, t);
       g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
@@ -624,8 +631,11 @@
   };
   $("sound").addEventListener("click", () => {
     soundOn = !soundOn; $("sound").textContent = soundOn ? "SND ON" : "SND OFF"; $("sound").setAttribute("aria-pressed", soundOn);
+    try { localStorage.setItem("fifty-sound", soundOn ? "on" : "off"); } catch (e) {}
+    if (window.Launch) { window.Launch.muted = !soundOn; if (!soundOn) window.Launch.cut(); }
     if (soundOn) tone(660, 0.05);
   });
+  $("sound").textContent = soundOn ? "SND ON" : "SND OFF"; $("sound").setAttribute("aria-pressed", soundOn);
 
   // ---------- Logo coin ----------
   (function drawCoin(cv, p) {
@@ -643,10 +653,16 @@
   // ---------- Stars ----------
   const sc = $("stars"), sctx = sc.getContext("2d");
   let stars = [];
+  let starW = 0;
   function sizeStars() {
-    sc.width = Math.ceil(innerWidth / 4); sc.height = Math.ceil(innerHeight / 4);
-    stars = Array.from({ length: Math.round(sc.width * sc.height / 260) }, () => ({
-      x: Math.random() * sc.width | 0, y: Math.random() * sc.height | 0, ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 1.4,
+    const w = Math.ceil(innerWidth / 4);
+    sc.width = w; sc.height = Math.ceil(innerHeight / 4);
+    if (w === starW && stars.length) return;      // same sky, just a taller or shorter window
+    starW = w;
+    // spread over the tallest the window is likely to get, so a growing toolbar never leaves a bare strip
+    const h = Math.ceil(Math.max(innerHeight, screen.height || 0) / 4);
+    stars = Array.from({ length: Math.round(w * h / 260) }, () => ({
+      x: Math.random() * w | 0, y: Math.random() * h | 0, ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 1.4,
     }));
   }
   function paintStars(t) {
@@ -719,7 +735,8 @@
     const s = secsToEtMidnight();
     $("clock").textContent = hms(s);
     // New day in Eastern time: load the new case (with a little jitter so everyone doesn't hit at once).
-    if (!preview && etDate() !== todayISO && !tickClock.r) { tickClock.r = 1; setTimeout(() => location.reload(), 1500 + Math.random() * 8000); }
+    // Only from the title screen, so nobody loses a game in progress (or their streak) at midnight.
+    if (!preview && etDate() !== todayISO && !tickClock.r && !steps.title.hidden && $("hop").hidden) { tickClock.r = 1; setTimeout(() => location.reload(), 1500 + Math.random() * 8000); }
   }
   tickClock(); setInterval(tickClock, 1000);
 
@@ -854,15 +871,16 @@
   }
   track.addEventListener("pointerdown", (e) => {
     if (locked) return;
+    if (drag !== null && drag !== e.pointerId) return;
     try { track.setPointerCapture(e.pointerId); } catch (err) {}
     track.classList.add("grab");
-    drag = true;
+    drag = e.pointerId;
     follow(e.clientX);
     tutDid(0);
     e.preventDefault();
   });
-  track.addEventListener("pointermove", (e) => { if (drag && !locked) follow(e.clientX); });
-  const endDrag = () => { drag = null; track.classList.remove("grab"); };
+  track.addEventListener("pointermove", (e) => { if (drag === e.pointerId && !locked) follow(e.clientX); });
+  const endDrag = (e) => { if (e && e.pointerId !== undefined && drag !== null && e.pointerId !== drag) return; drag = null; track.classList.remove("grab"); };
   track.addEventListener("pointerup", endDrag);
   track.addEventListener("pointercancel", endDrag);
   track.addEventListener("keydown", (e) => {
@@ -907,7 +925,7 @@
 
   // Typing the guess.
   const cin = $("c-v");
-  cin.addEventListener("focus", () => cin.select());
+  cin.addEventListener("focus", () => { cin.select(); setTimeout(() => { try { cin.setSelectionRange(0, 99); } catch (e) {} }, 0); });
   cin.addEventListener("input", () => {
     const raw = cin.value.replace(/[^0-9]/g, ""); cin.value = raw;
     if (raw !== "") { setC(Number(raw), true); tutDid(0); }
@@ -1176,14 +1194,19 @@
     if (miss) haptic(true);
     let done = false;
     const close = (quiet) => {
-      if (done) return; done = true; hopTo.close = null; clearTimeout(safety);
+      if (done) return;
+      if (!quiet && document.hidden) {   // don't start the next round's clock while nobody is looking
+        document.addEventListener("visibilitychange", function back() { if (!document.hidden) { document.removeEventListener("visibilitychange", back); close(); } });
+        return;
+      }
+      done = true; hopTo.close = null; clearTimeout(safety);
       ov.hidden = true; st.hidden = true;
       hopBack.parent.insertBefore(st, hopBack.next);
       if (!quiet) then();
     };
     hopTo.close = close;
     // If animation frames stall (a backgrounded tab), never leave the player stuck.
-    const safety = setTimeout(() => { L.skip(); close(); }, 10000);
+    const safety = setTimeout(function nudge() { if (document.hidden) { setTimeout(nudge, 1000); return; } L.skip(); close(); }, 10000);
     L.muted = !soundOn;
     L.hop(from, to, L.planetFor(today.no), miss, () => close());
   }
@@ -1202,7 +1225,7 @@
     $("stage").hidden = !L;
    
     if (L) {
-      L.muted = again || !soundOn;
+      L.muted = !soundOn;
       L.rest(totalPts, L.planetFor(today.no));
       requestAnimationFrame(() => document.querySelector(".screen").scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }));
     }
@@ -1895,12 +1918,19 @@
       return ac;
     } catch (e) { return null; }
   }
+  let master = null;
+  const out = (a) => { if (!master) { master = a.createGain(); master.connect(out(a)); } return master; };
+  function cutSounds() {
+    if (master && ac) { try { master.gain.setTargetAtTime(0, ac.currentTime, 0.02); } catch (e) {} }
+    master = null;
+    try { speechSynthesis.cancel(); } catch (e) {}
+  }
   function tone(f, d = 0.08, when = 0, type = "square", vol = 0.04) {
     if (window.Launch && window.Launch.muted) return;
     const a = audio(); if (!a) return;
     const t = a.currentTime + when, o = a.createOscillator(), g = a.createGain();
     o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-    o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.02);
+    o.connect(g).connect(out(a)); o.start(t); o.stop(t + d + 0.02);
   }
   // Filtered noise: the roar of the engine and the whoosh of things flying past.
   function hiss(when, dur, f0, f1, vol, q = 0.8) {
@@ -1911,7 +1941,7 @@
     flt.type = "bandpass"; flt.Q.value = q;
     flt.frequency.setValueAtTime(f0, t); flt.frequency.exponentialRampToValueAtTime(f1, t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    src.connect(flt).connect(g).connect(a.destination); src.start(t); src.stop(t + dur + 0.05);
+    src.connect(flt).connect(g).connect(out(a)); src.start(t); src.stop(t + dur + 0.05);
   }
   const sfx = {
     countdown() { tone(440, 0.09, 0); tone(440, 0.09, 0.35); tone(880, 0.22, 0.7); },
@@ -1928,7 +1958,7 @@
         const o = a.createOscillator(), g = a.createGain(), w = i * 0.09 + (i > 2 ? 0.12 : 0);
         o.type = "sine"; o.frequency.setValueAtTime(f, t + w); o.frequency.exponentialRampToValueAtTime(f * 1.5, t + w + 0.07);
         g.gain.setValueAtTime(0.0001, t + w); g.gain.exponentialRampToValueAtTime(0.06, t + w + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + w + 0.08);
-        o.connect(g).connect(a.destination); o.start(t + w); o.stop(t + w + 0.1);
+        o.connect(g).connect(out(a)); o.start(t + w); o.stop(t + w + 0.1);
       });
     },
     // A miss: the engine coughs and dies.
@@ -1946,7 +1976,7 @@
         o.type = type; o.frequency.setValueAtTime(f0, t + when); o.frequency.exponentialRampToValueAtTime(f1, t + when + d);
         if (lfoHz) { const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = lfoHz; lg.gain.value = lfoAmt; l.connect(lg).connect(o.frequency); l.start(t + when); l.stop(t + when + d + 0.05); }
         g.gain.setValueAtTime(0.0001, t + when); g.gain.exponentialRampToValueAtTime(vol, t + when + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + when + d);
-        o.connect(g).connect(a.destination); o.start(t + when); o.stop(t + when + d + 0.05);
+        o.connect(g).connect(out(a)); o.start(t + when); o.stop(t + when + d + 0.05);
       };
       if (key === "sats") for (let i = 0; i < 3; i++) { tone(1760, 0.05, i * 0.22, "square", 0.03); tone(2349, 0.05, i * 0.22 + 0.08, "square", 0.025); }
       if (key === "rocks") for (let i = 0; i < 4; i++) { hiss(i * 0.17 + Math.random() * 0.05, 0.22, 220, 60, 0.3, 1.2); tone(70 - i * 6, 0.18, i * 0.17, "triangle", 0.08); }
@@ -1965,7 +1995,7 @@
       const a = audio(); if (!a) return;
       const o = a.createOscillator(), g = a.createGain();
       o.type = "triangle"; o.frequency.value = 110; g.gain.value = 0.0001;
-      o.connect(g).connect(a.destination); o.start();
+      o.connect(g).connect(out(a)); o.start();
       g.gain.exponentialRampToValueAtTime(0.03, a.currentTime + 1.5);
       hum = { o, g };
     },
@@ -1994,7 +2024,7 @@
         lfo.frequency.value = 38; lg.gain.value = 12; lfo.connect(lg).connect(o.frequency);   // robotic warble
         flt.type = "bandpass"; flt.frequency.setValueAtTime(w > 0.3 ? 650 : w ? 1000 : 800, t + w); flt.Q.value = 3;
         g.gain.setValueAtTime(0.0001, t + w); g.gain.exponentialRampToValueAtTime(0.12, t + w + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + w + d);
-        o.connect(flt).connect(g).connect(a.destination);
+        o.connect(flt).connect(g).connect(out(a));
         o.start(t + w); lfo.start(t + w); o.stop(t + w + d + 0.05); lfo.stop(t + w + d + 0.05);
       });
     }
@@ -2039,6 +2069,7 @@
     _arrive(now); sfx.humStop(); if (score < 1000) sfx.arrive(); if (doneCb) doneCb(); };
   const stopFor = (s) => { const p = Math.max(0.06, s / 1000); const last = [...STOPS].reverse().find((x) => x.p <= p + 0.001); return last ? last.name : "LIFTOFF"; };
   window.Launch = {
+    cut: cutSounds,
     stops: STOPS.map(({ p, key, name }) => ({ p, key, name })),
     muted: false,
     stopFor,
@@ -2082,7 +2113,7 @@
     // Jump straight to the end (tap to skip).
     skip() {
       if (hopCb) {   // between rounds, one tap continues
-        clearTimeout(hopTimer); clearTimeout(launch.t1); clearTimeout(launch.t2); sfx.humStop();
+        clearTimeout(hopTimer); clearTimeout(launch.t1); clearTimeout(launch.t2); sfx.humStop(); cutSounds();
         hopping = false; running = false; intro = false; arrived = true; prog = pEnd;
         const cb = hopCb; hopCb = null; cb(); return;
       }
@@ -2096,7 +2127,7 @@
     },
     stop() { clearTimeout(launch.t1); clearTimeout(launch.t2); sfx.humStop(); running = false; intro = false; },
   };
-  $("stage").addEventListener("click", () => window.Launch.skip());
+  $("stage").addEventListener("click", (e) => { e.stopPropagation(); window.Launch.skip(); });
 
   raf = requestAnimationFrame(frame);
 })();
