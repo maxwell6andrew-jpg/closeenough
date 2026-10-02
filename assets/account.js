@@ -4,7 +4,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDocs, collection, serverTimestamp }
+import { getFirestore, doc, setDoc, getDocs, collection, serverTimestamp, runTransaction }
   from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 // Public web config (not a secret: security rules decide who can read or write what).
@@ -56,8 +56,21 @@ onAuthStateChanged(auth, (user) => {
 });
 getRedirectResult(auth).catch(() => {});
 
+// Anonymous count of finished games per day (just a number and a score total, nothing about the player).
+async function tally(entry) {
+  const ref = doc(db, "plays", String(entry.no)), add = Math.max(0, Math.min(1000, Math.round(entry.total || 0)));
+  await runTransaction(db, async (tx) => {
+    const cur = await tx.get(ref);
+    if (cur.exists()) tx.update(ref, { count: cur.data().count + 1, sum: cur.data().sum + add });
+    else tx.set(ref, { count: 1, sum: add });
+  });
+}
+
 // The game tells us when a day is finished.
-document.addEventListener("ce:played", (ev) => { if (current) upload(current, ev.detail).catch(() => {}); });
+document.addEventListener("ce:played", (ev) => {
+  if (!CE.preview) tally(ev.detail).catch(() => {});
+  if (current) upload(current, ev.detail).catch(() => {});
+});
 
 CE.signIn = async () => {
   const provider = new GoogleAuthProvider();
