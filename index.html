@@ -1069,11 +1069,21 @@
       return `<div class="rc"><div><div class="q">${R.q}</div><div class="mini"><div class="f" style="left:${p(x.lo)}%;width:${p(x.hi) - p(x.lo)}%"></div><div class="t" style="left:${p(R.truth)}%"></div></div></div><div class="p">${x.pts}</div></div>`;
     }).join("");
 
-    const grid = results.map((x) => x.pts === 0 ? "⬛" : (x.base ?? x.pts) >= 60 ? "🟨" : "🟦").join("");
+    // One emoji per round: 🎯 exact · 🔥 great · ⭐ decent · ✅ played it safe · ❌ miss
+    const roundEmoji = (x) => { const b = x.base ?? x.pts; return x.pts === 0 ? "❌" : b >= 100 ? "🎯" : b >= 60 ? "🔥" : b >= 25 ? "⭐" : "✅"; };
+    const grid = results.map(roundEmoji).join("");
     let streak = streakNow();
     if (!again && !preview) { store.set(playedKey(today.no), { total, results }); streak = bumpStreak(today.no); }
-    const reached = window.Launch ? `\n🚀 ${window.Launch.stopFor(total).toLowerCase()}` : "";
-    $("share").textContent = `${NAME} #${pad(today.no)} · ${today.theme}\n${grid}  ${num(total)}/1,000\n${title.toLowerCase()}` + reached + (streak > 1 ? `\n🔥 ${streak} days` : "");
+    // The flight path as emoji, up to the stage you reached.
+    const STAGE_EMOJI = { sats: "🛰️", rocks: "🪨", moon: "🌕", comet: "☄️", giant: "🪐", ufo: "👽", hole: "🕳️", whale: "🛁" };
+    let reached = "";
+    if (window.Launch) {
+      const p = Math.max(0.06, total / 1000);
+      const path = "🌍" + window.Launch.stops.filter((st) => st.p <= p + 0.001).map((st) => STAGE_EMOJI[st.key] || "✨").join("");
+      reached = `\n🚀 ${path} ${window.Launch.stopFor(total).toLowerCase()}`;
+    }
+    $("share").textContent = `${NAME} #${pad(today.no)} · ${today.theme}\n${grid}  ${num(total)}/1,000` + reached +
+      `\n${title.toLowerCase()}` + (streak > 1 ? ` · 🔥 ${streak} days` : "") + "\ncloseenough.day";
     $("copied").textContent = tomorrowLine();
   }
 
