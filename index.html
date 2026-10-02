@@ -1184,6 +1184,7 @@
   // Fly from the current height to the new one; passing a level lights it up.
   function climbTo(v) {
     buildClimb();
+    if (Math.min(1, v) > RAIL.cur + 0.005) [196, 262, 330, 392, 523].forEach((f, i) => tone(f, 0.06, i * 0.05, "square", 0.035));   // the little rocket climbs: fwoosh
     RAIL.target = Math.min(1, v);
     cancelAnimationFrame(RAIL.raf);
     const from = RAIL.cur, t0 = performance.now(), d = reduce ? 1 : 1100;
@@ -1938,11 +1939,14 @@
   // Moving out means cz grows exponentially, so the pull-back feels steady from
   // low orbit all the way to the edge. Anything you pass appears big at the screen
   // edge, then shrinks toward the middle as you leave it behind.
+  // Cockpit view: you fly forward. Everything ahead starts as a speck in the middle,
+  // grows as you close in, and whips past the edges of the screen.
   const F = 200;                          // focal length, in screen px
   const CX = W / 2, CY = H * 0.5;
-  const CZ0 = 30;                         // start: planet radius 10 shows as ~67px
-  const K = Math.log(4e5);                // how far a perfect game pulls back
-  const Zat = (p) => CZ0 * Math.exp(K * p);
+  const ZT = 1000;                        // depth of the whole trip, from home to the edge
+  const D = 60;                           // a stop you've just reached hangs this far ahead
+  const U = 30;                           // sideways world unit
+  const camZ = () => prog * ZT;
 
   const STOPS = [
     { p: 0.06, key: "sats",  name: "LOW ORBIT",     sub: "Satellites waving hello", ang: -2.4, size: 0.22, off: 0.55 },
@@ -1956,26 +1960,25 @@
     { p: 0.72, key: "nova",  name: "A SUPERNOVA",   sub: "Front-row seats",         ang: 0.7,  size: 0.5,  off: 0.5 },
     { p: 0.83, key: "hole",  name: "A BLACK HOLE",  sub: "Barely escaped",          ang: 3.6,  size: 0.6,  off: 0.5 },
     { p: 0.95, key: "whale", name: "THE EDGE OF THE UNIVERSE", sub: "Someone's been waiting for you", ang: 0.4, size: 0.9, off: 0.42 },
-  ].map((s) => ({ ...s, z: Zat(s.p) * 0.9 }));
+  ].map((s) => ({ ...s, z: s.p * ZT + D, u: U }));
 
-  // Stars fill the whole journey, spread log-evenly in depth.
-  const STARS = Array.from({ length: 900 }, (_, i) => {
-    const z = CZ0 * 0.6 * Math.exp(hash(i, 1, 13) * K * 1.02);
-    const a = hash(i, 2, 13) * Math.PI * 2, r = (0.15 + hash(i, 3, 13) * 0.9) * z;
-    return { x: Math.cos(a) * r, y: Math.sin(a) * r, z, hue: hash(i, 4, 13) };
+  // An endless field of stars ahead of you (it repeats every SD units of depth).
+  const SD = 420;
+  const STARS = Array.from({ length: 520 }, (_, i) => {
+    const a = hash(i, 2, 13) * Math.PI * 2, r = 4 + Math.pow(hash(i, 3, 13), 0.6) * 150;
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r, z: hash(i, 1, 13) * SD, hue: hash(i, 4, 13) };
   });
-  const ROCKBELT = Array.from({ length: 16 }, (_, i) => ({ img: ROCKS[i % ROCKS.length].img, a: hash(i, 8, 5) * Math.PI * 2, r: 0.35 + hash(i, 9, 5) * 0.6, dz: (hash(i, 10, 5) - 0.5) * 0.5 }));
+  // The asteroid belt is a ring you fly straight through.
+  const ROCKBELT = Array.from({ length: 22 }, (_, i) => ({ img: ROCKS[i % ROCKS.length].img, a: hash(i, 8, 5) * Math.PI * 2, r: 0.35 + hash(i, 9, 5) * 0.9, dz: (hash(i, 10, 5) - 0.5) * 160 }));
 
   let planetKey = "earth", planetImg = renderPlanet(PLANETS[planetKey], 120);
   let score = 1000, pStart = 0, pEnd = 1, hopping = false, hopCb = null, hopTimer = 0, t0 = 0, dur = 1, running = false, intro = false, prog = 0, shown = new Set();
-  const cz = () => Zat(prog);
-
-  // Project a world point. Returns null if it's behind the camera.
+  // Project a world point. Returns null if it's behind you.
   let focusFn = null;
   function proj(x, y, z) { return focusFn ? focusFn(x, y, z) : projRaw(x, y, z); }
   function projRaw(x, y, z) {
-    const d = cz() - z;
-    if (d <= 0.05) return null;
+    const d = z - camZ();
+    if (d <= 0.5) return null;
     const s = F / d;
     return { x: CX + x * s, y: CY + y * s, s, d };
   }
@@ -2007,7 +2010,7 @@
   let greet = null;   // { st, at, line, poke }
   function stopCenter(st) {
     if (st.key === "rocks") return [0, 0];
-    const R = st.off * st.z; return [Math.cos(st.ang) * R, Math.sin(st.ang) * R];
+    const R = st.off * st.u; return [Math.cos(st.ang) * R, Math.sin(st.ang) * R];
   }
   function startGreet(st, now) {
     if (!st || st.key === "whale" || !LINES[st.key]) return;
@@ -2045,10 +2048,10 @@
     px(-0.07, 0.1, 0.03, 0.03, "#0A1029"); px(-0.04, 0.13, 0.08, 0.03, "#0A1029"); px(0.04, 0.1, 0.03, 0.03, "#0A1029");
   }
   function drawGreet(now) {
-    const st = greet.st, z = st.z, S = st.size * st.z, [x0, y0] = stopCenter(st);
+    const st = greet.st, z = st.z, S = st.size * st.u, [x0, y0] = stopCenter(st);
     const e = 1 - Math.pow(1 - Math.min(1, (now - greet.at) / 650), 3);
     const n = projRaw(x0, y0, z) || { x: CX, y: CY, s: 0 };
-    const worldW = st.key === "rocks" ? 2 * st.z : S;
+    const worldW = st.key === "rocks" ? 2 * st.u : S;
     const sF = (W * (FOCUS_PX[st.key] || 0.48)) / worldW;
     const jump = greet.poke ? Math.max(0, 1 - (now - greet.poke) / 500) : 0;
     const s = n.s + (sF - n.s) * e, cx = n.x + (CX - n.x) * e, cy = n.y + (CY + 18 - n.y) * e - Math.sin(jump * Math.PI) * 10;
@@ -2102,18 +2105,18 @@
 
   function drawStop(st, now) {
     const tt = now / 1000;
-    const R = st.off * st.z, x = Math.cos(st.ang) * R, y = Math.sin(st.ang) * R, z = st.z;
-    const S = st.size * st.z;
+    const R = st.off * st.u, x = Math.cos(st.ang) * R, y = Math.sin(st.ang) * R, z = st.z;
+    const S = st.size * st.u;
     if (st.key === "sats") { drawSprite(SAT, x, y, z, S); drawSprite(SAT, -x * 0.6, -y * 1.3, z * 0.8, S * 0.8); }
     if (st.key === "rocks") for (const r of ROCKBELT) {
-      const a = r.a + tt * 0.15, rr = r.r * st.z;
-      drawSprite(r.img, Math.cos(a) * rr, Math.sin(a) * rr * 0.6, z * (1 + r.dz), S * (0.6 + r.r));
+      const a = r.a + tt * 0.15, rr = r.r * st.u;
+      drawSprite(r.img, Math.cos(a) * rr, Math.sin(a) * rr * 0.75, z + r.dz, st.u * (0.12 + r.r * 0.1));
     }
     if (st.key === "moon") drawSprite(MOON, x, y, z, S);
     if (st.key === "comet") {
       for (let i = 0; i < 22; i++) {
-        const q = proj(x - i * 0.03 * st.z, y + i * 0.022 * st.z, z - i * 0.02 * st.z); if (!q) continue;
-        const sz = Math.max(1, Math.round((i < 3 ? 0.04 : 0.02) * st.z * q.s));
+        const q = proj(x - i * 0.06 * st.u, y + i * 0.045 * st.u, z + i * 1.2); if (!q) continue;
+        const sz = Math.max(1, Math.round((i < 3 ? 0.08 : 0.04) * st.u * q.s));
         if (sz > 60) continue;
         ctx.fillStyle = i < 3 ? "#FFF1E8" : i < 9 ? "#9FE8FF" : "#29ADFF";
         ctx.fillRect(Math.round(q.x), Math.round(q.y), sz, sz);
@@ -2138,7 +2141,7 @@
       const c = Math.max(1, Math.round(rad * 0.22)); ctx.fillStyle = "#FFF1E8"; ctx.fillRect(Math.round(q.x - c), Math.round(q.y - c), c * 2, c * 2);
     }
     if (st.key === "ufo") {
-      const wob = Math.sin(tt * 2.5) * 0.04 * st.z;
+      const wob = Math.sin(tt * 2.5) * 0.08 * st.u;
       drawSprite(UFO, x + wob, y, z, S);
       if (Math.floor(tt * 3) % 2) drawSprite(ALIEN_WAVE, x + wob, y - S * 0.42, z, S * 0.18);
     }
@@ -2164,8 +2167,8 @@
   // Our own galaxy, seen from outside: it only fits on screen near the very end.
   function drawGalaxy(now, p) {
     if (p < 0.86) return;
-    const R = 0.35 * Zat(1) * (F / cz());          // px
-    if (R > 700) return;
+    const R = 420 * F / (ZT + 700 - camZ());       // px: our galaxy, seen from outside, dead ahead
+    if (R > 700 || R < 1) return;
     const alpha = Math.min(1, (p - 0.86) / 0.08);
     for (let i = 0; i < 700; i++) {
       const arm = i % 2, t = hash(i, 1, 31);
@@ -2179,18 +2182,15 @@
     ctx.globalAlpha = 1;
   }
 
-  // Before the pull-back: your rocket leaves the planet and flies straight past you.
+  // Liftoff: the cockpit rattles for a moment before the engines catch.
   let introAt = 0;
-  function drawIntroRocket(now) {
-    const k = (now - introAt) / 1100;
-    if (k >= 1) return false;
-    const s = 0.4 + Math.pow(k, 3) * 40;
-    const fl = FLAME[Math.floor(now / 70) % 2];
-    const w = ROCKET.width * s, h = ROCKET.height * s;
-    const y = CY - k * 30;
-    ctx.drawImage(fl, Math.round(CX - fl.width * s / 2), Math.round(y + h * 0.42), Math.round(fl.width * s), Math.round(fl.height * s));
-    ctx.drawImage(ROCKET, Math.round(CX - w / 2), Math.round(y - h / 2), Math.round(w), Math.round(h));
-    return true;
+  function drawIntroRocket(now) { return now - introAt < 900; }
+  // Home, under your feet: a huge Earth at the bottom that drops away as you climb.
+  function drawHome() {
+    const drop = Math.min(1, prog / 0.05);
+    if (drop >= 1) return;
+    const w = 420, h = planetImg.height * w / planetImg.width;
+    ctx.drawImage(planetImg, Math.round(CX - w / 2), Math.round(H * 0.6 + drop * drop * H * 0.7), Math.round(w), Math.round(h));
   }
 
   const stageEl = document.getElementById("stage");
@@ -2202,41 +2202,42 @@
       prog = pStart + (pEnd - pStart) * e;
       if (k >= 1) arrive(now);
     }
-    ctx.fillStyle = skyColor(prog); ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    if (intro) ctx.translate(Math.round((Math.random() - 0.5) * 4), Math.round((Math.random() - 0.5) * 4));   // rattle on liftoff
+    ctx.fillStyle = skyColor(prog); ctx.fillRect(-4, -4, W + 8, H + 8);
 
-    // stars: stream in from the edges as you pass them, then settle toward the middle
-    const czv = cz();
+    // stars: specks in the middle that rush outward and streak past the edges
+    const cam = camZ(), speed = running && !intro ? (pEnd - pStart) * ZT / Math.max(1, dur) * 1000 : 0;   // units per second
+    const trail = Math.min(70, speed * 0.05);
     for (const s of STARS) {
-      const d = czv - s.z; if (d <= 0.05) continue;
+      const d = ((s.z - cam) % SD + SD) % SD + 2;
       const q = F / d, x = CX + s.x * q, y = CY + s.y * q;
-      if (x < -2 || x > W + 2 || y < -2 || y > H + 2) continue;
-      const fresh = s.z / d;                       // big right after you pass it
-      if (fresh < 0.07) continue;                  // keep the middle from clogging up
-      ctx.fillStyle = fresh > 0.6 ? "#FFF1E8" : fresh > 0.15 ? (s.hue > 0.7 ? "#FF77A8" : "#9EA9D4") : "#3E4A80";
-      const size = fresh > 1.5 ? 2 : 1;
+      if (x < -6 || x > W + 6 || y < -6 || y > H + 6) continue;
+      ctx.fillStyle = d < 60 ? "#FFF1E8" : d < 180 ? (s.hue > 0.7 ? "#FF77A8" : "#9EA9D4") : "#3E4A80";
+      const size = d < 35 ? 2 : 1;
       ctx.fillRect(Math.round(x), Math.round(y), size, size);
-      // motion streaks while flying fast
-      if (running && !intro && fresh > 0.4) {
-        ctx.globalAlpha = 0.35; ctx.fillRect(Math.round(x + (x - CX) * 0.06), Math.round(y + (y - CY) * 0.06), 1, 1); ctx.globalAlpha = 1;
+      if (trail > 2 && d < 220) {                  // warp streaks, pointing back toward the middle
+        const q2 = F / (d + trail), x2 = CX + s.x * q2, y2 = CY + s.y * q2;
+        const n = Math.min(8, Math.ceil(Math.hypot(x - x2, y - y2)));
+        ctx.globalAlpha = 0.55;
+        for (let j = 1; j < n; j++) ctx.fillRect(Math.round(x + (x2 - x) * j / n), Math.round(y + (y2 - y) * j / n), 1, 1);
+        ctx.globalAlpha = 1;
       }
     }
 
     drawGalaxy(now, prog);
-    // home planet (always farthest away)
-    drawSprite(planetImg, 0, 0, 0, 20 * planetImg.width / (2 * 120 + 2));
-    // the things you pass, nearest drawn last
-    [...STOPS].filter((st) => st.p <= pEnd + 0.001 && (!greet || greet.st !== st)).sort((a, b) => a.z - b.z).forEach((st) => drawStop(st, now));
+    drawHome();
+    // the things ahead, farthest first
+    [...STOPS].filter((st) => st.p <= pEnd + 0.001 && (!greet || greet.st !== st)).sort((a, b) => b.z - a.z).forEach((st) => drawStop(st, now));
     if (greet) drawGreet(now);
 
+    ctx.restore();
     if (intro && !drawIntroRocket(now)) { intro = false; t0 = now; running = true; }
-    if (!running && !intro && prog === 0) {      // waiting on the pad
-      const s = 0.45; ctx.drawImage(ROCKET, Math.round(CX - ROCKET.width * s / 2), Math.round(CY - 52), Math.round(ROCKET.width * s), Math.round(ROCKET.height * s));
-    }
 
     // HUD
     $("alt").textContent = `${shown.size}/${STOPS.length} STOPS`;
     for (const st of STOPS) {
-      if (st.p <= pEnd + 0.001 && czv > st.z * 1.15 && !shown.has(st.key)) { shown.add(st.key); callout(st); if (st.key === "whale") { whaleAt = now; setTimeout(() => { helloAt = performance.now(); sayHello(); }, 1900); } }
+      if (st.p <= pEnd + 0.001 && st.p <= prog + 0.002 && !shown.has(st.key)) { shown.add(st.key); callout(st); if (st.key === "whale") { whaleAt = now; setTimeout(() => { helloAt = performance.now(); sayHello(); }, 1900); } }
     }
     raf = requestAnimationFrame(frame);
   }
@@ -2291,7 +2292,7 @@
   let master = null;
   const out = (a) => { if (!master) { master = a.createGain(); master.connect(out(a)); } return master; };
   function cutSounds() {
-    if (master && ac) { try { master.gain.setTargetAtTime(0, ac.currentTime, 0.02); } catch (e) {} }
+    if (master && ac) { try { master.gain.setTargetAtTime(0, ac.currentTime + 0.25, 0.12); } catch (e) {} }
     master = null;
     try { speechSynthesis.cancel(); } catch (e) {}
   }
@@ -2345,17 +2346,19 @@
     },
     // A miss: the engine coughs and dies.
     // The error box: a two-tone warning alarm, beep-boop-beep-boop.
-    alarm() { for (let i = 0; i < 4; i++) { tone(i % 2 ? 660 : 880, 0.14, 0.15 + i * 0.17, "square", 0.045); } },
+    alarm() { for (let i = 0; i < 4; i++) { tone(i % 2 ? 660 : 880, 0.13, i * 0.16, "square", 0.07); } },
     // Liftoff between rounds: a deep rumble under a rising roar. Bigger = the end-of-game blast.
     boost(big) {
-      const n = big ? 8 : 5;
-      for (let i = 0; i < n; i++) tone(48 + i * 7, 0.11, i * 0.07, "sawtooth", big ? 0.06 : 0.045);
-      hiss(0, big ? 1.1 : 0.7, 150, big ? 4200 : 3200, big ? 0.32 : 0.22, 0.9);
-      tone(big ? 330 : 440, 0.08, big ? 0.55 : 0.32, "triangle", 0.04); tone(big ? 660 : 880, 0.12, big ? 0.62 : 0.39, "triangle", 0.04);
+      // A rising "fwoosh" pitched where phone speakers can play it, with a crackle of thrust under it.
+      const n = big ? 10 : 7;
+      for (let i = 0; i < n; i++) tone(130 + i * (big ? 34 : 40), 0.07, i * 0.045, "square", big ? 0.06 : 0.05);
+      hiss(0, big ? 1.0 : 0.65, 300, big ? 5000 : 4000, big ? 0.45 : 0.35, 0.8);
+      tone(big ? 784 : 988, 0.09, big ? 0.48 : 0.34, "triangle", 0.06); tone(big ? 1175 : 1319, 0.12, big ? 0.56 : 0.41, "triangle", 0.06);
     },
     sputter() {
-      for (let i = 0; i < 5; i++) { hiss(i * 0.17, 0.11, 320, 70, 0.32, 1); tone(92 - i * 9, 0.09, i * 0.17, "sawtooth", 0.07); }
-      tone(196, 0.14, 0.95, "square", 0.05); tone(147, 0.32, 1.1, "square", 0.05);
+      // cough, cough, cough... and the engine dies (mid-range so phones play it)
+      for (let i = 0; i < 5; i++) { hiss(i * 0.17, 0.1, 900, 200, 0.45, 1.2); tone(180 - i * 18, 0.08, i * 0.17, "square", 0.07); }
+      tone(220, 0.14, 0.95, "square", 0.06); tone(165, 0.34, 1.1, "square", 0.06);
     },
     blip(i) { const base = 330 * Math.pow(1.122, i); tone(base, 0.07); tone(base * 1.5, 0.12, 0.07); hiss(0, 0.35, 2500, 600, 0.05, 2); },
     // A sound for each thing you fly past.
@@ -2430,6 +2433,10 @@
   function blip(st) { sfx.blip(STOPS.indexOf(st)); sfx.pass(st.key); }
   function fanfare() { sfx.fanfare(); }
 
+  // iPhones only allow audio that a tap starts: wake the scene's sound on the first touch.
+  const unlock = () => { const a = audio(); if (a && a.state === "running") { removeEventListener("pointerup", unlock); removeEventListener("click", unlock); } };
+  addEventListener("pointerup", unlock); addEventListener("click", unlock);
+
   // ---------- API used by the game ----------
   let doneCb = null;
   function launch() {
@@ -2473,7 +2480,7 @@
     },
     // Between rounds: fly from the old total to the new one. A miss just sputters where you are.
     hop(fromS, toS, key, miss, onDone) {
-      if (planetKey !== key || !hop.drawn) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120); hop.drawn = 1; }
+      if (planetKey !== key) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120); }
       $("planet-name").textContent = PLANETS[planetKey].name;
       clearTimeout(launch.t1); clearTimeout(launch.t2); clearTimeout(hopTimer); clearTimeout(calloutTimer); sfx.humStop();
       greet = null;
