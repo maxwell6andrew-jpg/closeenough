@@ -10,7 +10,7 @@ import { getFirestore, doc, setDoc, getDocs, collection, serverTimestamp }
 // Public web config (not a secret: security rules decide who can read or write what).
 const app = initializeApp({
   apiKey: "AIzaSyCiHMXBEMBYXuUvGh_FOKO_HIL5VPtU9q8",
-  authDomain: "close-enough-4baa8.firebaseapp.com",
+  authDomain: "closeenough.day",   // sign-in helper is self-hosted at /__/auth, so the popup never shows firebaseapp.com
   projectId: "close-enough-4baa8",
   appId: "1:134717691513:web:24f6062461acdc3222e6a8",
 });
