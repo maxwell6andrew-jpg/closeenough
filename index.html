@@ -1230,6 +1230,9 @@
     $("copied").textContent = tomorrowLine();
   }
 
+  // Phones get the native share sheet (one tap to a group chat). Everything else copies.
+  const canShare = !!navigator.share && matchMedia("(pointer: coarse)").matches;
+  $("copy").textContent = canShare ? "SHARE" : "COPY";
   $("copy").addEventListener("click", () => {
     const text = $("share").textContent;
     const done = () => { $("copied").textContent = "Copied. Paste it anywhere."; tone(880, 0.06); };
@@ -1238,7 +1241,9 @@
       const s = getSelection(); s.removeAllRanges(); s.addRange(rg);
       $("copied").textContent = "Selected. Copy it with your keyboard or long-press.";
     }
-    try { navigator.clipboard.writeText(text).then(done, select); } catch (e) { select(); }
+    const copy = () => { try { navigator.clipboard.writeText(text).then(done, select); } catch (e) { select(); } };
+    if (canShare) navigator.share({ text }).then(() => tone(880, 0.06), (e) => { if (!e || e.name !== "AbortError") copy(); });
+    else copy();
   });
 
 })();
