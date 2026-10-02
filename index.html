@@ -99,7 +99,9 @@
   .secs.hurry { color: var(--b); }
 
   /* The guess picker: one number, then how sure */
-  .guess { display: grid; grid-template-columns: 56px 1fr 56px; gap: 12px; align-items: center; }
+  .guess { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 12px; align-items: center; }
+  .guess-num { min-width: 0; }
+  .guess-num span.wordy { font-size: 22px; white-space: nowrap; }
   .guess-num { display: flex; align-items: baseline; justify-content: center; gap: 4px; font-family: var(--display); cursor: text; }
   .guess-num .num {
     font-family: var(--display); font-weight: 400; font-size: 92px; line-height: 0.8; color: var(--paper);
@@ -107,6 +109,7 @@
     background: transparent; border: 0; border-radius: 0; caret-color: var(--gold); -webkit-appearance: none; appearance: none;
   }
   .guess-num .num:focus { outline: none; color: var(--gold); }
+  .guess-num .num.long { font-size: 60px; width: 2.9em; }
   .guess-num .num:disabled { opacity: 1; -webkit-text-fill-color: var(--paper); }
   .guess-num span { font-size: 44px; color: var(--muted); }
   .stepper {
@@ -218,9 +221,11 @@
     .screen { padding-block: 16px; min-height: 0; }
     #s-round .question { font-size: 27px; min-height: 0; }
     .guess-num .num { font-size: 62px; }
+    .guess-num .num.long { font-size: 46px; }
     .guess-num span { font-size: 32px; }
     .stepper { height: 46px; font-size: 32px; }
-    .guess { grid-template-columns: 46px 1fr 46px; }
+    .guess { grid-template-columns: 46px minmax(0, 1fr) 46px; }
+    .guess-num span.wordy { font-size: 17px; }
     .picker { padding-block: 22px 0; }
     .track { height: 50px; }
     .scale { margin-top: 14px; }
@@ -288,7 +293,7 @@
       <h2 class="question" id="q"></h2>
       <div class="guess">
         <button class="stepper" id="minus" aria-label="One lower">−</button>
-        <label class="guess-num"><input class="num" id="c-v" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" aria-label="Your guess" value="50"><span id="unit">%</span></label>
+        <label class="guess-num"><input class="num" id="c-v" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" aria-label="Your guess" value="50"><span id="unit">%</span></label>
         <button class="stepper" id="plus" aria-label="One higher">+</button>
       </div>
       <div class="picker">
@@ -522,12 +527,18 @@
   let c = 50, g = 15, chipVals = [];
   const lohi = () => [c - g, c + g];
   // Give-or-take choices scale with the question, rounded to clean numbers.
-  const NICE = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 500];
+  const NICE = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750,
+                1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000];
+  const nice = (t) => NICE.reduce((best, n) => Math.abs(n - t) < Math.abs(best - t) ? n : best, 1);
+  // +/- and arrow keys move 1 on small scales, bigger steps on big ones (e.g. 50 m, 150 satellites).
+  const num = (n) => Math.abs(n) >= 1000 ? n.toLocaleString("en-US") : String(n);
+  const short = (n) => n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + "K" : String(n);
+  const stepFor = (R) => span(R) >= 1000 ? nice(span(R) / 200) : 1;
   function chipsFor(R) {
     const out = [0];
     for (const k of [1, 2, 5, 10, 15]) {
       const t = k * span(R) / 100;
-      const v = NICE.reduce((best, n) => Math.abs(n - t) < Math.abs(best - t) ? n : best, 1);
+      const v = nice(t);
       if (!out.includes(v)) out.push(v);
     }
     return out;
@@ -536,7 +547,7 @@
     const R = r();
     chipVals = chipsFor(R);
     $("chips").innerHTML = chipVals.map((v) =>
-      `<button class="chip" data-g="${v}">${v === 0 ? "EXACT" : "±" + v}<small>${pointsFor(normWidth(R, 0, 2 * v))} PTS</small></button>`).join("");
+      `<button class="chip" data-g="${v}">${v === 0 ? "EXACT" : "±" + short(v)}<small>${pointsFor(normWidth(R, 0, 2 * v))} PTS</small></button>`).join("");
     $("chips").style.gridTemplateColumns = `repeat(${chipVals.length <= 4 ? chipVals.length : 3}, 1fr)`;
   }
   function render() {
@@ -546,7 +557,7 @@
     $("fill").style.left = pos(c) + "%";
     $("fill").style.width = (pos(hi) - pos(lo)) + "%";
     if (document.activeElement !== $("c-v")) $("c-v").value = c;
-    $("width-l").textContent = g === 0 ? `Exactly ${c}${R.unit}` : `${lo} to ${hi}${R.unit}`;
+    $("width-l").textContent = g === 0 ? `Exactly ${num(c)}${R.unit}` : `${num(lo)} to ${num(hi)}${R.unit}`;
     $("worth-v").textContent = pointsFor(normWidth(R, lo, hi));
     [...$("chips").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.g) === g));
     track.setAttribute("aria-valuetext", `${c}${R.unit}, give or take ${g}`);
@@ -590,7 +601,7 @@
   track.addEventListener("pointerup", endDrag);
   track.addEventListener("pointercancel", endDrag);
   track.addEventListener("keydown", (e) => {
-    const step = e.shiftKey ? 5 : 1;
+    const step = stepFor(r()) * (e.shiftKey ? 5 : 1);
     if (e.key === "ArrowLeft" || e.key === "ArrowDown") { setC(c - step); e.preventDefault(); }
     if (e.key === "ArrowRight" || e.key === "ArrowUp") { setC(c + step); e.preventDefault(); }
     if (e.key === "Enter") lockIn();
@@ -601,8 +612,8 @@
     let hold = null;
     const stop = () => { clearTimeout(hold); clearInterval(hold); hold = null; };
     $(id).addEventListener("pointerdown", (e) => {
-      e.preventDefault(); setC(c + d);
-      hold = setTimeout(() => { hold = setInterval(() => setC(c + d), 60); }, 350);
+      e.preventDefault(); setC(c + d * stepFor(r()));
+      hold = setTimeout(() => { hold = setInterval(() => setC(c + d * stepFor(r())), 60); }, 350);
     });
     for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $(id).addEventListener(ev, stop);
   }
@@ -634,13 +645,17 @@
     $("coach").hidden = !practicing;
     $("coach").innerHTML = COACH_SET;
     cin.disabled = false;
+    const digits = String(R.max).length;
+    cin.maxLength = digits;
+    cin.classList.toggle("long", digits > 3);
     $("minus").disabled = $("plus").disabled = false;
     [...$("dots").children].forEach((d, i) => {
       d.className = i < results.length ? (results[i].pts === 0 ? "miss" : results[i].pts >= 60 ? "hit" : "mid") : i === ri ? "now" : "";
     });
     $("q").textContent = R.q;
     $("unit").textContent = R.unit;
-    $("scale").innerHTML = [0, 0.25, 0.5, 0.75, 1].map((k) => `<span style="left:${EDGE + (100 - 2 * EDGE) * k}%">${Math.round(R.min + k * span(R))}</span>`).join("");
+    $("scale").innerHTML = [0, 0.25, 0.5, 0.75, 1].map((k) => `<span style="left:${EDGE + (100 - 2 * EDGE) * k}%">${short(Math.round(R.min + k * span(R)))}</span>`).join("");
+    $("unit").classList.toggle("wordy", R.unit.trim().length > 4);
     for (const id of ["verdict", "why", "next", "truth", "truth-tag"]) $(id).hidden = true;
     for (const id of ["sure", "worth", "lock", "type-hint"]) $(id).hidden = false;
     render();
@@ -682,13 +697,13 @@
 
     // The truth drops onto the track.
     $("truth").style.left = pos(R.truth) + "%"; $("truth-tag").style.left = pos(R.truth) + "%";
-    $("truth-tag").textContent = R.truth + R.unit;
+    $("truth-tag").textContent = num(R.truth) + R.unit;
     for (const id of ["truth", "truth-tag"]) { const el = $(id); el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; }
 
     const vt = !inside ? (R.truth < c ? "Too high. Missed." : "Too low. Missed.")
       : pts === 100 ? "Dead on." : pts >= 60 ? "Tight and right." : pts >= 25 ? "Caught it." : "Caught it, barely tight.";
     $("vt").textContent = vt;
-    $("vs").textContent = `You said ${c}${R.unit}${g ? `, give or take ${g}` : ", exactly"}. The answer is ${R.truth}${R.unit}.`;
+    $("vs").textContent = `You said ${num(c)}${R.unit}${g ? `, give or take ${num(g)}` : ", exactly"}. The answer is ${num(R.truth)}${R.unit}.`;
     $("pts").classList.toggle("zero", !inside);
     $("why-t").textContent = R.why; $("why-s").textContent = "Source: " + R.src;
     $("verdict").hidden = false; $("why").hidden = false; $("next").hidden = false;
