@@ -1215,21 +1215,18 @@
         `<div class="src">${R.fun ? esc(R.why) + "<br>" : ""}<b>Source:</b> ${esc(R.src)}</div></div>`;
     }).join("");
 
-    // One emoji per round: 🎯 exact · 🔥 great · ⭐ decent · ✅ played it safe · ❌ miss
-    const roundEmoji = (x) => { const b = x.base ?? x.pts; return x.pts === 0 ? "❌" : b >= 100 ? "🎯" : b >= 60 ? "🔥" : b >= 25 ? "⭐" : "✅"; };
-    const grid = results.map(roundEmoji).join("");
-    let streak = streakNow();
-    if (!again && !preview) { store.set(playedKey(today.no), { total, results }); streak = bumpStreak(today.no); }
-    // The flight path as emoji, up to the stage you reached.
-    const STAGE_EMOJI = { sats: "🛰️", rocks: "🪨", moon: "🌕", mars: "🔴", comet: "☄️", giant: "🪐", ufo: "👽", nebula: "🌌", nova: "💥", hole: "🕳️", whale: "🛁" };
+    // The share: one pixel square per round (the same colors as the answer cards), the score, where you got to.
+    const square = (x) => { const b = x.base ?? x.pts; return !x.inside ? "⬛" : b >= 100 ? "🟨" : b >= 60 ? "🟧" : b >= 25 ? "🟦" : "⬜"; };
+    const grid = results.map(square).join("");
+    if (!again && !preview) { store.set(playedKey(today.no), { total, results }); bumpStreak(today.no); }
+    const WHERE = { sats: "low orbit", rocks: "the asteroid belt", moon: "the Moon", mars: "Mars", comet: "a comet", giant: "the gas giant",
+      ufo: "the aliens", nebula: "a nebula", nova: "a supernova", hole: "a black hole", whale: "the edge of the universe" };
     let reached = "";
     if (window.Launch) {
-      const p = Math.max(0.06, total / 1000);
-      const path = "🌍" + window.Launch.stops.filter((st) => st.p <= p + 0.001).map((st) => STAGE_EMOJI[st.key] || "✨").join("");
-      reached = `\n🚀 ${path} ${window.Launch.stopFor(total).toLowerCase()}`;
+      const st = [...window.Launch.stops].reverse().find((x) => x.p <= Math.max(0.06, total / 1000) + 0.001);
+      if (st) reached = `\nMade it to ${WHERE[st.key]}`;
     }
-    $("share").textContent = `${NAME} #${pad(today.no)} · ${today.theme}\n${grid}  ${num(total)}/1,000` + reached +
-      `\n${title.toLowerCase()}` + (streak > 1 ? ` · 🔥 ${streak} days` : "") + "\ncloseenough.day";
+    $("share").textContent = `Close Enough #${pad(today.no)}\n${grid}  ${num(total)}/1,000` + reached + "\ncloseenough.day";
     $("copied").textContent = tomorrowLine();
   }
 
