@@ -85,6 +85,41 @@
 
   /* Round dots */
   .dots { display: flex; gap: 6px; }
+  .r-head { display: flex; align-items: center; gap: 10px; }
+  /* The climb: a pixel rocket rides up the side as your score grows. */
+  #s-round { position: relative; }
+  /* The climb: an open-air track on the left of the page with a rocket that rises as you score. */
+  .climb { position: fixed; z-index: 2; top: 150px; bottom: 70px; width: 170px; left: max(12px, calc(50% - 230px - 200px)); pointer-events: none;
+    opacity: 0; transition: opacity 300ms steps(3); }
+  body.climbing .climb { opacity: 1; }
+  .climb-line { position: absolute; left: 14px; top: 0; bottom: 0; width: 2px; background: repeating-linear-gradient(var(--muted) 0 4px, transparent 4px 10px); opacity: .45; }
+  .climb-fill { position: absolute; left: 13px; bottom: 0; width: 4px; background: var(--gold); box-shadow: 0 0 0 2px var(--ink); }
+  .stage-row { position: absolute; left: 0; display: flex; align-items: center; gap: 12px; transform: translateY(50%); }
+  .stage-row canvas { width: 30px; height: 30px; image-rendering: pixelated; opacity: .4; transition: opacity 200ms steps(2); }
+  .stage-row span { font-family: var(--label); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); opacity: .6; white-space: nowrap; }
+  .stage-row.lit canvas { opacity: 1; }
+  .stage-row.lit span { color: var(--paper); opacity: 1; }
+  .stage-row.flash span { color: var(--gold); }
+  .rocket-wrap { position: absolute; left: 1px; transform: translateY(50%); display: flex; align-items: center; gap: 8px; }
+  .rocket-wrap canvas { width: 28px; height: 50px; image-rendering: pixelated; }
+  .rocket-wrap b { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1; color: var(--gold); text-shadow: 2px 2px 0 var(--ink); white-space: nowrap; }
+  .rocket-wrap.blast { transition: bottom 700ms cubic-bezier(.6, 0, .9, .4) !important; bottom: 130% !important; }
+  /* Not enough room beside the panel (phones, small tablets): a slim strip on the left edge. */
+  @media (max-width: 860px) {
+    .climb { left: 1px; width: 15px; top: 120px; bottom: 40px; }
+    .climb-line { left: 6px; }
+    .climb-fill { left: 5px; }
+    .stage-row canvas { width: 14px; height: 14px; }
+    .stage-row span, .rocket-wrap b { display: none; }
+    .rocket-wrap canvas { width: 14px; height: 25px; }
+  }
+  .reach { position: absolute; left: 50%; top: 24%; transform: translate(-50%, -50%); z-index: 3; white-space: nowrap; pointer-events: none;
+    font-family: var(--display); font-size: 30px; line-height: 1; color: var(--gold); text-shadow: 3px 3px 0 var(--ink);
+    background: rgba(10, 16, 41, .85); box-shadow: 0 0 0 var(--u) var(--ink); padding: 10px 14px 8px; animation: pop 300ms cubic-bezier(.2, 1.6, .4, 1); }
+  .reach small { display: block; font-family: var(--label); font-size: 11px; letter-spacing: .08em; color: var(--paper); text-shadow: none; margin-bottom: 4px; }
+  .mult { font-family: var(--display); font-size: 22px; line-height: 1; color: var(--ink); background: var(--a); padding: 3px 8px 1px; box-shadow: 0 0 0 3px var(--ink); animation: pop 300ms cubic-bezier(.2, 1.6, .4, 1); }
+  .mult.final { background: var(--gold); }
+  @keyframes pop { from { transform: scale(.4); } }
   .dots i { width: 14px; height: 14px; background: var(--ink); }
   .dots i.now { background: var(--paper); }
   .dots i.hit { background: var(--gold); } .dots i.mid { background: var(--a); } .dots i.miss { background: var(--b); opacity: .6; }
@@ -100,7 +135,10 @@
 
   /* The guess picker: one number, then how sure */
   .guess { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 12px; align-items: center; }
-  .guess-num { min-width: 0; }
+  .guess-num { min-width: 0; position: relative; }
+  .guess-num .type-tag { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); white-space: nowrap;
+    font-family: var(--label); font-size: 10.5px !important; line-height: 1; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); pointer-events: none; }
+  .guess-num .type-tag::before { content: "⌨ "; }
   .guess-num span.wordy { font-size: 22px; white-space: nowrap; }
   .guess-num { display: flex; align-items: baseline; justify-content: center; gap: 4px; font-family: var(--display); cursor: text; }
   .guess-num .num {
@@ -159,13 +197,17 @@
   .truth-tag { position: absolute; top: -46px; transform: translateX(-50%); font-family: var(--display); font-size: 24px; color: var(--gold); white-space: nowrap; line-height: 1; }
   .scale { position: relative; height: 14px; margin-top: 18px; }
   .scale span { position: absolute; transform: translateX(-50%); }
-  .worth { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); }
-  .worth b { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .sure-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .worth { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
+  .worth b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 0.8; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .worth b::after { content: " PTS"; font-family: var(--label); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
 
   /* Reveal */
   .verdict { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; align-items: center; padding: 16px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); }
   .pts { font-family: var(--display); font-size: 72px; line-height: 0.8; color: var(--gold); grid-row: span 2; min-width: 2.2ch; font-variant-numeric: tabular-nums; }
   .pts.zero { color: var(--b); }
+  .pts::after, .total b::after { content: " PTS"; font-family: var(--label); font-size: 14px; letter-spacing: 0.06em; color: var(--muted); vertical-align: middle; }
+  .total b::after { font-size: 18px; }
   .vt { font-family: var(--body); font-weight: 700; font-size: 22px; line-height: 1.15; }
   .vs { font-size: 14px; color: var(--muted); }
   .why { border-left: var(--u) solid var(--gold); padding-left: 14px; display: grid; gap: 6px; }
@@ -191,6 +233,9 @@
   .nudge { animation: spot 900ms steps(2) infinite, nudge 300ms steps(4); }
   @keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
   #lock.wait { opacity: 0.35; }
+  .screen.thud { animation: thud 160ms steps(3); }
+  @keyframes thud { 33% { transform: translate(1px, 2px); } 66% { transform: translate(-1px, -1px); } }
+  #lock.armed { animation: spot 600ms steps(2) infinite; outline: var(--u) solid var(--paper); outline-offset: 4px; }
   .coach b.k { display: inline; font-size: inherit; letter-spacing: 0; background: var(--ink); color: var(--gold); padding: 0 6px; margin: 0; }
   .coach b { font-family: var(--label); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; display: block; margin-bottom: 4px; }
   .foot { text-align: center; margin: 28px 0 0; } .foot a { font-family: var(--label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
@@ -235,11 +280,30 @@
     .picker { padding-block: 22px 0; }
     .track { height: 50px; }
     .scale { margin-top: 14px; }
-    .chips { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
+    .chips { gap: 6px; }
     .chip { font-size: 20px; padding: 9px 0 7px; }
     .chip small { font-size: 10px; letter-spacing: 0; }
-    .worth { padding: 8px 12px; }
-    .worth b { font-size: 24px; }
+    .worth b { font-size: 22px; }
+    #type-hint { display: none !important; }
+    .verdict { padding: 10px 12px; gap: 2px 12px; }
+    .verdict .pts { font-size: 46px; }
+    .pts::after { font-size: 11px; }
+    .vt { font-size: 18px; }
+    .vs { font-size: 13px; }
+    .why { gap: 3px; padding-left: 10px; }
+    .why p { font-size: 14.5px; line-height: 1.4; }
+    .src { font-size: 11.5px; }
+    #s-title { gap: 14px; }
+    #s-title .h-case { font-size: 28px; }
+    .rules { gap: 8px; }
+    .rule { font-size: 15px; line-height: 1.35; grid-template-columns: 26px 1fr; }
+    .rule i { font-size: 22px; }
+    #start { padding-block: 14px 12px; }
+    #howto { padding-block: 10px 9px; font-size: 20px; }
+    .chip { padding: 7px 0 5px; }
+    .picker { padding-block: 20px 0; }
+    .scale { margin-top: 12px; }
+    .stage { width: min(100%, calc(64vh * 9 / 16)); margin-inline: auto; }
     #lock, #next { padding-block: 13px 11px; font-size: 30px; }
     .coach { font-size: 13px; padding: 10px 12px; }
     .verdict .pts { font-size: 60px; }
@@ -264,6 +328,7 @@
 </style>
 
 <canvas id="stars" aria-hidden="true"></canvas>
+<div class="climb" id="climb" aria-hidden="true"></div>
 
 <div class="wrap">
   <header class="bar">
@@ -279,27 +344,29 @@
   <main class="px screen" aria-live="polite">
     <!-- Title -->
     <section class="step" id="s-title">
-      <div class="row"><span class="lbl">Today's case</span><span class="lbl" id="streak" style="color:var(--gold)"></span></div>
+      <div class="row"><span class="lbl">Today's theme</span><span class="lbl" id="streak" style="color:var(--gold)"></span></div>
       <h1 class="h-case" id="theme">Is the world getting better?</h1>
       <div class="picker-row" id="preview-row" hidden></div>
       <div class="rules">
-        <div class="rule"><i>1</i><div><b>Make your guess.</b> Swipe the bar, tap it, or type a number.</div></div>
-        <div class="rule"><i>2</i><div><b>Say how sure you are.</b> Exact pays 100. Give or take 5 pays 62. Give or take 15 pays 5. Miss and you get 0.</div></div>
-        <div class="rule"><i>3</i><div><b>20 seconds a round.</b> When time's up, your answer locks where it is.</div></div>
+        <div class="rule"><i>1</i><div><b>Guess the number.</b> Swipe, tap, or type it.</div></div>
+        <div class="rule"><i>2</i><div><b>Say how sure you are.</b> Tighter windows pay more. Miss and you get 0.</div></div>
+        <div class="rule"><i>3</i><div><b>The stakes climb.</b> Rounds 3 and 4 are ×2. The final round is ×4.</div></div>
+        <div class="rule"><i>4</i><div><b>20 seconds a round.</b> A perfect day is 1,000.</div></div>
       </div>
-      <button class="btn" id="start">START<small>5 ROUNDS · ABOUT 2 MINUTES</small></button>
+      <button class="btn" id="start">START<small>5 ROUNDS · UP TO 1,000 POINTS</small></button>
       <button class="btn ghost" id="howto">HOW TO PLAY<small>A PRACTICE ROUND, NO CLOCK</small></button>
     </section>
 
     <!-- Round -->
     <section class="step" id="s-round" hidden>
-      <div class="row"><span class="lbl" id="r-no">Round 1 of 5</span><div class="dots" id="dots"></div></div>
+      <div class="reach" id="reach" hidden></div>
+      <div class="row"><span class="r-head"><span class="lbl" id="r-no">Round 1 of 5</span><span class="mult" id="mult" hidden>×2</span></span><div class="dots" id="dots"></div></div>
       <div class="coach" id="coach" hidden></div>
       <div class="timer" id="timer-row"><div class="blocks20" id="blocks20"></div><div class="secs" id="secs">20</div></div>
       <h2 class="question" id="q"></h2>
       <div class="guess" id="guess">
         <button class="stepper" id="minus" aria-label="One lower">−</button>
-        <label class="guess-num"><input class="num" id="c-v" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" aria-label="Your guess" value="50"><span id="unit">%</span></label>
+        <label class="guess-num"><input class="num" id="c-v" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" aria-label="Your guess" value="50"><span id="unit">%</span><span class="type-tag" id="type-tag">tap to type</span></label>
         <button class="stepper" id="plus" aria-label="One higher">+</button>
       </div>
       <div class="picker">
@@ -313,10 +380,9 @@
       </div>
       <p class="type-hint lbl" id="type-hint">Swipe or tap the bar, or type your guess</p>
       <div class="sure" id="sure">
-        <span class="lbl">How sure are you?</span>
+        <div class="sure-h"><span class="lbl">How sure are you?</span><span class="worth" id="worth"><span class="lbl" id="width-l">40 to 60%</span><b id="worth-v">5</b></span></div>
         <div class="chips" id="chips"></div>
       </div>
-      <div class="worth" id="worth"><span class="lbl" id="width-l">40 to 60%</span><span><span class="lbl">Worth </span><b id="worth-v">5</b></span></div>
       <button class="btn" id="lock">LOCK IT IN</button>
 
       <!-- Reveal parts (shown after lock) -->
@@ -338,7 +404,7 @@
         <div class="flash" id="flash"></div>
       </div>
       <p class="lbl stage-hint" id="stage-hint" hidden>Tap to skip</p>
-      <div class="total"><span class="lbl">Your score</span><b id="total">0</b><span class="lbl">out of 500</span></div>
+      <div class="total"><span class="lbl">Your score</span><b id="total">0</b><span class="lbl">out of 1,000</span></div>
       <div class="mirror"><span class="lbl">What this says about you</span><div class="vt" id="m-title"></div><div class="vs" id="m-sub"></div></div>
       <div class="recap" id="recap"></div>
       <div class="sharebox" id="share"></div>
@@ -429,11 +495,42 @@
   // ---------- Score: tighter pays more ----------
   const span = (r) => r.max - r.min;
   const normWidth = (r, lo, hi) => (hi - lo) * 100 / span(r);
+  // Base points per round, 0-100. w is the full window as a % of the scale.
+  // EXACT 100 · ±1 96 · ±2 91 · ±5 79 · ±10 61 · ±20 33 · ±30 13 · ±40 3 · miss 0
   function pointsFor(w) {
-    if (w <= 1) return 100;
-    if (w >= 30) return 5;
-    return Math.max(5, Math.round(100 * Math.pow((30 - w) / 29, 1.3)));
+    if (w <= 0) return 100;
+    const half = w / 2;
+    return Math.max(1, Math.round(100 * Math.pow(Math.max(0, 1 - half / 50), 2.2)));
   }
+  // Later rounds are worth more. A perfect day is 100 + 100 + 200 + 200 + 400 = 1,000.
+  const MULT = [1, 1, 2, 2, 4];
+  const multNow = () => practicing ? 1 : MULT[ri] || 1;
+
+  // ---------- Haptics ----------
+  // iPhone Safari gives a real tap when a native switch toggles; Android supports vibrate().
+  // Macs and PCs can't be reached from a web page, so they get a tiny tactile nudge on screen.
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let hapLabel = null;
+  if (isIOS) {
+    const sw = document.createElement("input"); sw.type = "checkbox"; sw.setAttribute("switch", ""); sw.id = "hap-sw";
+    hapLabel = document.createElement("label"); hapLabel.htmlFor = "hap-sw";
+    for (const el of [sw, hapLabel]) { el.setAttribute("aria-hidden", "true"); el.tabIndex = -1; el.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none"; }
+    document.body.append(sw, hapLabel);
+  }
+  let lastHap = 0;
+  function haptic(strong) {
+    const now = performance.now(); if (now - lastHap < 35) return; lastHap = now;
+    try {
+      if (hapLabel) { hapLabel.click(); return; }
+      if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) { navigator.vibrate(strong ? 18 : 6); return; }
+    } catch (e) {}
+    if (strong && !reduce) {
+      const el = document.querySelector(".screen");
+      el.classList.remove("thud"); void el.offsetWidth; el.classList.add("thud");
+    }
+  }
+  // Buttons get a tap too.
+  document.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) haptic(); }, { passive: true });
 
   // ---------- Sound ----------
   let ac = null, soundOn = true;
@@ -492,8 +589,47 @@
     }
   }
   sizeStars(); addEventListener("resize", sizeStars);
+
+  // Things drift across the sky behind the game (on the same low-res pixel grid as the stars).
+  const FLY = {
+    sat: [["c.w.c", "cwwwc", "c.w.c"], { c: "#29ADFF", w: "#C2C3C7" }],
+    rock: [[".bb.", "bbbb", "bbb.", ".b.."], { b: "#AB5236" }],
+    rock2: [[".b.", "bbb", ".b."], { b: "#7A4A30" }],
+    ufo: [["..ggg..", ".gwwwg.", "sssssss", ".y.y.y."], { g: "#7CE3A1", w: "#FFF1E8", s: "#C2C3C7", y: "#FFEC27" }],
+    // Easter egg for Draftable: a crowned D.
+    drafty: [["y.y.y", "yyyyy", ".....", "PPPP.", "P...P", "P...P", "P...P", "PPPP."], { y: "#FFEC27", P: "#FFF1E8" }],
+  };
+  const flyers = [];
+  function spawn(kind) {
+    if (reduce || !sc.width) return;
+    const fromLeft = Math.random() < 0.5, y = 4 + Math.random() * (sc.height - 12);
+    const speed = { sat: 9, rock: 14, ufo: 11, drafty: 7 }[kind] || 10;   // px (low-res) per second
+    const make = (k, dy = 0, dx = 0, sp = speed) => flyers.push({ k, x: fromLeft ? -8 - dx : sc.width + 8 + dx, y: y + dy, vx: (fromLeft ? 1 : -1) * sp, wob: Math.random() * 6, born: performance.now() });
+    if (kind === "rock") { make("rock"); make("rock2", 6, 6, speed * 1.2); make("rock2", -5, 12, speed * 0.9); }
+    else make(kind);
+  }
+  setInterval(() => spawn("sat"), 5000);
+  setInterval(() => spawn("rock"), 15000);
+  setTimeout(() => { spawn("ufo"); setInterval(() => spawn("ufo"), 15000); }, 7500);
+  // The crowned D shows up now and then, not on a schedule you can set your watch by.
+  (function drafty() { setTimeout(() => { spawn("drafty"); drafty(); }, 40000 + Math.random() * 50000); })();
+  setTimeout(() => spawn("sat"), 1200);
+  function paintFlyers(now, dt) {
+    for (let i = flyers.length - 1; i >= 0; i--) {
+      const f = flyers[i];
+      f.x += f.vx * dt;
+      const [rows, pal] = FLY[f.k];
+      const y = Math.round(f.y + (f.k === "ufo" ? Math.sin(now / 300 + f.wob) * 2 : f.k === "drafty" ? Math.sin(now / 500) * 1.5 : 0));
+      rows.forEach((r, j) => [...r].forEach((ch, c) => { if (pal[ch]) { sctx.fillStyle = pal[ch]; sctx.fillRect(Math.round(f.x) + c, y + j, 1, 1); } }));
+      if (f.k === "ufo" && Math.floor(now / 200) % 2) { sctx.fillStyle = "rgba(124,227,161,.35)"; sctx.fillRect(Math.round(f.x) + 2, y + 4, 3, 3); }
+      if (f.x < -20 || f.x > sc.width + 20) flyers.splice(i, 1);
+    }
+  }
   let lastStar = 0;
-  (function loop(t) { if (t - lastStar > 250) { paintStars(t); lastStar = t; } if (!reduce) requestAnimationFrame(loop); })(0);
+  (function loop(t) {
+    if (t - lastStar > 90) { const dt = Math.min(0.2, (t - lastStar) / 1000); paintStars(t); paintFlyers(t, lastStar ? dt : 0); lastStar = t; }
+    if (!reduce) requestAnimationFrame(loop);
+  })(0);
   if (reduce) paintStars(0);
 
   // ---------- Clock to the next case (midnight Eastern) ----------
@@ -536,7 +672,7 @@
     $("copied").textContent = tomorrowLine();
     $("dots").innerHTML = "<i></i>".repeat(CASE.length);
     const done = played(c.no);
-    $("start").innerHTML = done ? `SEE YOUR RESULT<small>YOU SCORED ${done.total} · BACK TOMORROW</small>` : "START<small>5 ROUNDS · ABOUT 2 MINUTES</small>";
+    $("start").innerHTML = done ? `SEE YOUR RESULT<small>YOU SCORED ${done.total} · BACK TOMORROW</small>` : "START<small>5 ROUNDS · UP TO 1,000 POINTS</small>";
     const sk = streakNow();
     $("streak").textContent = sk ? `🔥 ${sk}-day streak` : "";
     if (preview) [...$("preview-row").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.no) === c.no));
@@ -578,7 +714,7 @@
   const stepFor = (R) => span(R) >= 1000 ? nice(span(R) / 200) : 1;
   function chipsFor(R) {
     const out = [0];
-    for (const k of [1, 2, 5, 10, 15]) {
+    for (const k of [1, 2, 5, 10, 20, 30, 40]) {
       const t = k * span(R) / 100;
       const v = nice(t);
       if (!out.includes(v)) out.push(v);
@@ -589,8 +725,8 @@
     const R = r();
     chipVals = chipsFor(R);
     $("chips").innerHTML = chipVals.map((v) =>
-      `<button class="chip" data-g="${v}">${v === 0 ? "EXACT" : "±" + short(v)}<small>${pointsFor(normWidth(R, 0, 2 * v))} PTS</small></button>`).join("");
-    $("chips").style.gridTemplateColumns = `repeat(${chipVals.length <= 4 ? chipVals.length : 3}, 1fr)`;
+      `<button class="chip" data-g="${v}">${v === 0 ? "EXACT" : "±" + short(v)}<small>${num(pointsFor(normWidth(R, 0, 2 * v)) * multNow())} PTS</small></button>`).join("");
+    $("chips").style.gridTemplateColumns = `repeat(${Math.min(4, chipVals.length)}, 1fr)`;
   }
   function render() {
     const R = r(), [lo, hi] = lohi();
@@ -600,11 +736,11 @@
     $("fill").style.width = (pos(hi) - pos(lo)) + "%";
     if (document.activeElement !== $("c-v")) $("c-v").value = c;
     $("width-l").textContent = g === 0 ? `Exactly ${num(c)}${R.unit}` : `${num(lo)} to ${num(hi)}${R.unit}`;
-    $("worth-v").textContent = pointsFor(normWidth(R, lo, hi));
+    $("worth-v").textContent = num(pointsFor(normWidth(R, lo, hi)) * multNow());
     [...$("chips").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.g) === g));
     track.setAttribute("aria-valuetext", `${c}${R.unit}, give or take ${g}`);
   }
-  const buzz = () => { try { if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(4); } catch (e) {} };
+  const buzz = (strong) => haptic(strong);
   function setC(v, quiet) {
     if (locked) return;
     const R = r();
@@ -647,7 +783,6 @@
     const step = stepFor(r()) * (e.shiftKey ? 5 : 1);
     if (e.key === "ArrowLeft" || e.key === "ArrowDown") { setC(c - step); e.preventDefault(); }
     if (e.key === "ArrowRight" || e.key === "ArrowUp") { setC(c + step); e.preventDefault(); }
-    if (e.key === "Enter") lockIn();
   });
 
   // Plus and minus: tap for one step, hold to run.
@@ -673,27 +808,137 @@
     if (raw !== "") { setC(Number(raw), true); tutDid(0); tutDid(1); }
   });
   cin.addEventListener("change", () => { cin.value = c; });
-  cin.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); cin.blur(); lockIn(); } });
+  // Enter twice locks it in (once arms it, so nobody locks by accident). On the reveal, Enter goes on.
+  let enterAt = 0;
+  const LOCK_LABEL = "LOCK IT IN";
+  function disarmEnter() { enterAt = 0; $("lock").innerHTML = LOCK_LABEL; $("lock").classList.remove("armed"); }
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.repeat) return;
+    if (!steps.round.hidden) {
+      e.preventDefault();
+      if (locked) { if (!$("next").hidden) $("next").click(); return; }
+      if (practicing && tut < 3) { lockIn({ type: "click" }); return; }
+      if (enterAt && performance.now() - enterAt < 2500) { disarmEnter(); lockIn(); return; }
+      enterAt = performance.now();
+      $("lock").innerHTML = 'PRESS ENTER AGAIN<small>TO LOCK IT IN</small>';
+      $("lock").classList.add("armed");
+      tone(660, 0.05);
+      setTimeout(() => { if (enterAt && performance.now() - enterAt >= 2400) disarmEnter(); }, 2500);
+    } else if (!steps.title.hidden && document.activeElement && document.activeElement.tagName !== "BUTTON") {
+      $("start").click();
+    }
+  });
+
+  // ---------- The climb rail ----------
+  const RAIL = { cur: 0, target: 0, raf: 0 };
+  const railStops = () => (window.Launch && window.Launch.stops) || [];
+  const ICON = {
+    home: [["..b..", ".bgb.", "bgbgb", ".bgb.", "..b.."], { b: "#29ADFF", g: "#00E436" }],
+    sats: [["c.w.c", "cwwwc", "c.w.c"], { c: "#29ADFF", w: "#C2C3C7" }],
+    rocks: [[".r.", "rrr", ".r."], { r: "#AB5236" }],
+    moon: [[".gg.", "gwgg", "gggg", ".gg."], { g: "#9A9BA3", w: "#FFF1E8" }],
+    comet: [["...w", "..c.", ".c..", "c..."], { w: "#FFF1E8", c: "#29ADFF" }],
+    giant: [[".ooo.", "ocwco", "ooooo", "owcwo", ".ooo."], { o: "#E0A060", c: "#FFF1E8", w: "#AB5236" }],
+    ufo: [[".g.", "sss", ".y."], { g: "#7CE3A1", s: "#C2C3C7", y: "#FFEC27" }],
+    hole: [[".ppp.", "pk.kp", "p.k.p", "pk.kp", ".ppp."], { p: "#FF77A8", k: "#000" }],
+    whale: [["..y..", ".yyy.", "yyyyy", ".yyy.", "..y.."], { y: "#FFEC27" }],
+  };
+  const SHORT = { sats: "Low orbit", rocks: "Asteroids", moon: "The Moon", comet: "A comet", giant: "Gas giant", ufo: "Aliens", hole: "Black hole", whale: "The edge" };
+  const climbPct = (p) => 3 + p * 92;
+  function pix(cv, rows, pal) {
+    const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height);
+    rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(i + Math.floor((cv.width - r.length) / 2), j + Math.floor((cv.height - rows.length) / 2), 1, 1); } }));
+  }
+  const ROCKET = [".w.", "wrw", "www", "wcw", "www", "w.w"];
+  function drawRocket(flame) {
+    const cv = $("rocket-cv"); if (!cv) return;
+    pix(cv, ROCKET.concat(flame ? [".o.", ".y."] : [".y.", "..."]), { w: "#FFF1E8", r: "#FF004D", c: "#29ADFF", o: "#FFA300", y: "#FFEC27" });
+  }
+  function buildClimb() {
+    const el = $("climb"); if (el.dataset.built) return;
+    const stops = [{ p: 0, key: "home", name: "Home" }].concat(railStops());
+    if (stops.length < 2) return;
+    el.innerHTML = '<div class="climb-line"></div><div class="climb-fill" id="climb-fill"></div>' +
+      stops.map((st) => `<div class="stage-row" data-key="${st.key}" data-p="${st.p}" style="bottom:${climbPct(st.p)}%"><canvas width="5" height="5"></canvas><span>${st.key === "home" ? "Home" : SHORT[st.key] || st.name}</span></div>`).join("") +
+      '<div class="rocket-wrap" id="rocket"><canvas id="rocket-cv" width="5" height="9"></canvas><b id="rocket-pts">0</b></div>';
+    el.querySelectorAll(".stage-row").forEach((row) => { const [rows, pal] = ICON[row.dataset.key] || ICON.rocks; pix(row.querySelector("canvas"), rows, pal); });
+    el.dataset.built = "1";
+    drawRocket(true);
+  }
+  function placeRocket(v) {
+    const pct = climbPct(v);
+    $("rocket").style.bottom = pct + "%";
+    $("climb-fill").style.height = pct + "%";
+    $("rocket-pts").textContent = num(Math.round(v * 1000)) + " PTS";
+    $("climb").querySelectorAll(".stage-row").forEach((row) => row.classList.toggle("lit", v >= Number(row.dataset.p)));
+  }
+  function showClimb(on) {
+    buildClimb();
+    document.body.classList.toggle("climbing", on && !!$("climb").dataset.built);
+  }
+  // Fly from the current height to the new one; passing a level lights it up.
+  function climbTo(v) {
+    buildClimb();
+    RAIL.target = Math.min(1, v);
+    cancelAnimationFrame(RAIL.raf);
+    const from = RAIL.cur, t0 = performance.now(), d = reduce ? 1 : 1100;
+    let passed = railStops().filter((st) => st.p <= from).length;
+    (function step(now) {
+      const k = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k, 3);
+      RAIL.cur = from + (RAIL.target - from) * e;
+      placeRocket(RAIL.cur);
+      const n = railStops().filter((st) => st.p <= RAIL.cur).length;
+      if (n > passed) {
+        const st = railStops()[n - 1]; passed = n;
+        tone(880, 0.06); tone(1320, 0.1, 0.07);
+        const row = $("climb").querySelector(`[data-key="${st.key}"]`);
+        if (row) { row.classList.add("flash"); setTimeout(() => row.classList.remove("flash"), 1200); }
+        const el = $("reach"); el.innerHTML = `<small>REACHED</small>${st.name}`; el.hidden = false;
+        el.style.animation = "none"; void el.offsetWidth; el.style.animation = "";
+        clearTimeout(climbTo.t); climbTo.t = setTimeout(() => { el.hidden = true; }, 1500);
+      }
+      if (k < 1) RAIL.raf = requestAnimationFrame(step);
+    })(t0);
+  }
+  // Flame flicker.
+  setInterval(() => { if (document.body.classList.contains("climbing")) drawRocket(Math.floor(performance.now() / 140) % 2); }, 140);
+  // At the end of the case the rocket blasts off the top and the cutscene takes over.
+  function blastOff(then) {
+    const r = $("rocket");
+    if (!r || reduce || !document.body.classList.contains("climbing")) { showClimb(false); then(); return; }
+    r.classList.add("blast"); tone(220, 0.1); tone(440, 0.15, 0.08);
+    setTimeout(() => { showClimb(false); r.classList.remove("blast"); then(); }, 750);
+  }
 
   // ---------- Rounds ----------
   function startRound() {
     locked = false;
     const R = r();
     buildChips();
+    disarmEnter();
+    $("type-tag").textContent = matchMedia("(pointer: coarse)").matches ? "tap to type" : "type it in · enter ×2 to lock";
     c = Math.round(R.min + span(R) / 2);
     g = chipVals[chipVals.length - 1];
     $("r-no").textContent = practicing ? "How to play" : `Round ${ri + 1} of ${CASE.length}`;
+    const m = multNow();
+    $("mult").hidden = m === 1;
+    $("mult").textContent = ri === CASE.length - 1 && m > 1 ? `FINAL ×${m}` : `×${m}`;
+    $("mult").classList.toggle("final", ri === CASE.length - 1);
+    if (m > 1) { tone(523, 0.06); tone(784, 0.09, 0.07); if (ri === CASE.length - 1) tone(1047, 0.14, 0.15); }
     $("dots").hidden = practicing;
     $("timer-row").hidden = practicing;
     $("coach").hidden = !practicing;
     setTut(0);
+    if (!practicing && ri === 0) { RAIL.cur = RAIL.target = 0; buildClimb(); if ($("climb").dataset.built) placeRocket(0); }
+    showClimb(!practicing);
+    $("reach").hidden = true;
     cin.disabled = false;
     const digits = String(R.max).length;
     cin.maxLength = digits;
     cin.classList.toggle("long", digits > 3);
     $("minus").disabled = $("plus").disabled = false;
     [...$("dots").children].forEach((d, i) => {
-      d.className = i < results.length ? (results[i].pts === 0 ? "miss" : results[i].pts >= 60 ? "hit" : "mid") : i === ri ? "now" : "";
+      d.className = i < results.length ? (results[i].pts === 0 ? "miss" : (results[i].base ?? results[i].pts) >= 60 ? "hit" : "mid") : i === ri ? "now" : "";
     });
     $("q").textContent = R.q;
     $("unit").textContent = R.unit;
@@ -728,6 +973,7 @@
 
   function lockIn(e) {
     if (locked) return;
+    if (e && e.type === "click" && !(practicing && tut < 3)) disarmEnter();
     if (practicing && tut < 3 && e && e.type === "click") {
       const sp = document.querySelector(".spot"); if (sp) { sp.classList.remove("nudge"); void sp.offsetWidth; sp.classList.add("nudge"); }
       tone(196, 0.08); return;
@@ -735,11 +981,15 @@
     setTut(TUT.length);
     // Take whatever is typed in a number box when time runs out.
     if (document.activeElement === cin) cin.blur();
-    locked = true; clearInterval(timer); sfx.lock(); endDrag();
+    locked = true; clearInterval(timer); sfx.lock(); endDrag(); haptic(true);
     cin.disabled = true; $("minus").disabled = $("plus").disabled = true;
     const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
-    const w = normWidth(R, lo, hi), pts = inside ? pointsFor(w) : 0;
-    if (!practicing) results.push({ lo, hi, pts, inside });
+    const w = normWidth(R, lo, hi), base = inside ? pointsFor(w) : 0, m = multNow(), pts = base * m;
+    if (!practicing) {
+      results.push({ lo, hi, pts, base, inside });
+      const runTotal = results.reduce((t, x) => t + x.pts, 0);
+      setTimeout(() => climbTo(runTotal / 1000), 650);
+    }
     else $("coach").innerHTML = COACH_DONE;
     for (const id of ["sure", "worth", "lock", "type-hint"]) $(id).hidden = true;
 
@@ -749,21 +999,23 @@
     for (const id of ["truth", "truth-tag"]) { const el = $(id); el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; }
 
     const vt = !inside ? (R.truth < c ? "Too high. Missed." : "Too low. Missed.")
-      : pts === 100 ? "Dead on." : pts >= 60 ? "Tight and right." : pts >= 25 ? "Caught it." : "Caught it, barely tight.";
+      : base === 100 ? "Dead on." : base >= 60 ? "Tight and right." : base >= 25 ? "Caught it." : "Played it safe.";
     $("vt").textContent = vt;
-    $("vs").textContent = `You said ${num(c)}${R.unit}${g ? `, give or take ${num(g)}` : ", exactly"}. The answer is ${num(R.truth)}${R.unit}.`;
+    $("vs").textContent = `You said ${num(c)}${R.unit}${g ? `, give or take ${num(g)}` : ", exactly"}. The answer is ${num(R.truth)}${R.unit}.` + (m > 1 && inside ? ` ${base} × ${m} = ${num(pts)}.` : "");
     $("pts").classList.toggle("zero", !inside);
     $("why-t").textContent = R.why; $("why-s").textContent = "Source: " + R.src;
     $("verdict").hidden = false; $("why").hidden = false; $("next").hidden = false;
     $("next").textContent = practicing ? "START TODAY'S CASE" : ri === CASE.length - 1 ? "SEE YOUR CASE" : "NEXT ROUND";
     countUp($("pts"), pts);
-    inside ? sfx.hit(pts) : sfx.miss();
+    document.querySelector(".screen").scrollIntoView({ block: "start" });
+    inside ? sfx.hit(base) : sfx.miss();
     $("next").focus({ preventScroll: true });
   }
-  function countUp(el, to) {
-    if (reduce || to === 0) { el.textContent = to; return; }
+  function countUp(el, to, commas) {
+    const show = (v) => commas ? v.toLocaleString("en-US") : v;
+    if (reduce || to === 0) { el.textContent = show(to); return; }
     let v = 0; const stepBy = Math.max(1, Math.round(to / 12));
-    const id = setInterval(() => { v = Math.min(to, v + stepBy); el.textContent = v; sfx.count(v / Math.max(1, to)); if (v >= to) clearInterval(id); }, 40);
+    const id = setInterval(() => { v = Math.min(to, v + stepBy); el.textContent = show(v); sfx.count(v / Math.max(1, to)); if (v >= to) clearInterval(id); }, 40);
   }
 
   function begin(practice) { sfx.start(); practicing = practice; ri = 0; results = []; show("round"); startRound(); }
@@ -782,6 +1034,11 @@
 
   // ---------- End: the mirror ----------
   function finish(again = false) {
+    if (!again && document.body.classList.contains("climbing")) { blastOff(() => finish.real(again)); return; }
+    finish.real(again);
+  }
+  finish.real = function (again) {
+    showClimb(false);
     show("end");
     const L = window.Launch, totalPts = results.reduce((s, x) => s + x.pts, 0);
     $("stage").hidden = !L || again;
@@ -792,7 +1049,7 @@
       requestAnimationFrame(() => document.querySelector(".screen").scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }));
     }
     const total = results.reduce((s, x) => s + x.pts, 0);
-    countUp($("total"), total);
+    countUp($("total"), total, true);
     const hits = results.filter((x) => x.inside).length;
     // Bias over the rounds: is your range centered below or above the truth?
     const facts = results.map((x, i) => (((x.lo + x.hi) / 2) - CASE[i].truth) * 100 / span(CASE[i]));
@@ -812,11 +1069,11 @@
       return `<div class="rc"><div><div class="q">${R.q}</div><div class="mini"><div class="f" style="left:${p(x.lo)}%;width:${p(x.hi) - p(x.lo)}%"></div><div class="t" style="left:${p(R.truth)}%"></div></div></div><div class="p">${x.pts}</div></div>`;
     }).join("");
 
-    const grid = results.map((x) => x.pts === 0 ? "⬛" : x.pts >= 60 ? "🟨" : "🟦").join("");
+    const grid = results.map((x) => x.pts === 0 ? "⬛" : (x.base ?? x.pts) >= 60 ? "🟨" : "🟦").join("");
     let streak = streakNow();
     if (!again && !preview) { store.set(playedKey(today.no), { total, results }); streak = bumpStreak(today.no); }
     const reached = window.Launch ? `\n🚀 ${window.Launch.stopFor(total).toLowerCase()}` : "";
-    $("share").textContent = `${NAME} #${pad(today.no)} · ${today.theme}\n${grid}  ${total}/500\n${title.toLowerCase()}` + reached + (streak > 1 ? `\n🔥 ${streak} days` : "");
+    $("share").textContent = `${NAME} #${pad(today.no)} · ${today.theme}\n${grid}  ${num(total)}/1,000\n${title.toLowerCase()}` + reached + (streak > 1 ? `\n🔥 ${streak} days` : "");
     $("copied").textContent = tomorrowLine();
   }
 
@@ -1114,7 +1371,7 @@
   const ROCKBELT = Array.from({ length: 16 }, (_, i) => ({ img: ROCKS[i % ROCKS.length].img, a: hash(i, 8, 5) * Math.PI * 2, r: 0.35 + hash(i, 9, 5) * 0.6, dz: (hash(i, 10, 5) - 0.5) * 0.5 }));
 
   let planetKey = "earth", planetImg = renderPlanet(PLANETS[planetKey], 120);
-  let score = 500, pEnd = 1, t0 = 0, dur = 1, running = false, intro = false, prog = 0, shown = new Set();
+  let score = 1000, pEnd = 1, t0 = 0, dur = 1, running = false, intro = false, prog = 0, shown = new Set();
   const cz = () => Zat(prog);
 
   // Project a world point. Returns null if it's behind the camera.
@@ -1294,11 +1551,11 @@
     if (arrived) return;
     arrived = true; running = false;
     const last = [...STOPS].reverse().find((s) => s.p <= pEnd + 0.001);
-    const perfect = score >= 500;
+    const perfect = score >= 1000;
     if (perfect) { $("flash").classList.add("on"); setTimeout(() => $("flash").classList.remove("on"), 160); fanfare(); }
     setTimeout(() => {
       $("final-t").textContent = last ? last.name : "LIFTOFF";
-      $("final-s").textContent = perfect ? `Perfect game: ${score}/500. You found the hot tub at the end of everything.` : `${score}/500. Score higher to fly farther.`;
+      $("final-s").textContent = perfect ? `Perfect game: ${score.toLocaleString("en-US")}/1,000. You found the hot tub at the end of everything.` : `${score.toLocaleString("en-US")}/1,000. Score higher to fly farther.`;
       $("final").classList.add("on");
     }, perfect ? 4600 : 600);
   }
@@ -1343,6 +1600,26 @@
       hiss(1.55, 0.5, 400, 3500, 0.25, 1.4);                    // whoosh as it passes you
     },
     blip(i) { const base = 330 * Math.pow(1.122, i); tone(base, 0.07); tone(base * 1.5, 0.12, 0.07); hiss(0, 0.35, 2500, 600, 0.05, 2); },
+    // A sound for each thing you fly past.
+    pass(key) {
+      const a = audio(); if (!a || (window.Launch && window.Launch.muted)) return;
+      const t = a.currentTime;
+      const glide = (type, f0, f1, d, when, vol, lfoHz = 0, lfoAmt = 0) => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.type = type; o.frequency.setValueAtTime(f0, t + when); o.frequency.exponentialRampToValueAtTime(f1, t + when + d);
+        if (lfoHz) { const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = lfoHz; lg.gain.value = lfoAmt; l.connect(lg).connect(o.frequency); l.start(t + when); l.stop(t + when + d + 0.05); }
+        g.gain.setValueAtTime(0.0001, t + when); g.gain.exponentialRampToValueAtTime(vol, t + when + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + when + d);
+        o.connect(g).connect(a.destination); o.start(t + when); o.stop(t + when + d + 0.05);
+      };
+      if (key === "sats") for (let i = 0; i < 3; i++) { tone(1760, 0.05, i * 0.22, "square", 0.03); tone(2349, 0.05, i * 0.22 + 0.08, "square", 0.025); }
+      if (key === "rocks") for (let i = 0; i < 4; i++) { hiss(i * 0.17 + Math.random() * 0.05, 0.22, 220, 60, 0.3, 1.2); tone(70 - i * 6, 0.18, i * 0.17, "triangle", 0.08); }
+      if (key === "moon") { hiss(0, 1.3, 300, 1600, 0.12, 0.7); [392, 494, 587].forEach((f, i) => glide("sine", f, f, 1.1, i * 0.05, 0.04)); }
+      if (key === "comet") { hiss(0, 0.9, 7000, 900, 0.14, 1.5); [2093, 1760, 1568, 1319, 1175].forEach((f, i) => tone(f, 0.08, i * 0.07, "triangle", 0.03)); }
+      if (key === "giant") { glide("sine", 80, 260, 0.6, 0, 0.12); glide("sine", 260, 70, 0.7, 0.6, 0.1); hiss(0.1, 1.0, 200, 900, 0.1, 0.6); }
+      if (key === "ufo") { glide("sine", 520, 880, 0.5, 0, 0.07, 9, 60); glide("sine", 880, 440, 0.6, 0.5, 0.07, 9, 60); glide("sine", 440, 660, 0.5, 1.1, 0.06, 12, 40); }
+      if (key === "hole") { glide("sawtooth", 420, 38, 1.4, 0, 0.06); hiss(0, 1.5, 1200, 80, 0.2, 0.9); }
+      if (key === "whale") for (let i = 0; i < 9; i++) { const f = 500 + Math.random() * 700; glide("sine", f, f * 1.8, 0.07, i * 0.11 + Math.random() * 0.05, 0.05); }
+    },
     humStart() {
       if (window.Launch && window.Launch.muted) return;
       const a = audio(); if (!a) return;
@@ -1381,14 +1658,14 @@
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) {}
   }
-  function blip(st) { sfx.blip(STOPS.indexOf(st)); }
+  function blip(st) { sfx.blip(STOPS.indexOf(st)); sfx.pass(st.key); }
   function fanfare() { sfx.fanfare(); }
 
   // ---------- API used by the game ----------
   let doneCb = null;
   function launch() {
     sfx.humStop();
-    pEnd = Math.max(0.06, score / 500);
+    pEnd = Math.max(0.06, score / 1000);
     dur = reduce ? 1 : 3000 + pEnd * 11000;
     shown = new Set(); whaleAt = 0; helloAt = 0; prog = 0; arrived = false;
     $("final").classList.remove("on"); $("callout").classList.remove("on");
@@ -1401,9 +1678,10 @@
   }
   setInterval(() => { if (running && !intro) sfx.humAt(prog); }, 120);
   const _arrive = arrive;
-  arrive = (now) => { if (arrived) return; _arrive(now); sfx.humStop(); if (score < 500) sfx.arrive(); if (doneCb) doneCb(); };
-  const stopFor = (s) => { const p = Math.max(0.06, s / 500); const last = [...STOPS].reverse().find((x) => x.p <= p + 0.001); return last ? last.name : "LIFTOFF"; };
+  arrive = (now) => { if (arrived) return; _arrive(now); sfx.humStop(); if (score < 1000) sfx.arrive(); if (doneCb) doneCb(); };
+  const stopFor = (s) => { const p = Math.max(0.06, s / 1000); const last = [...STOPS].reverse().find((x) => x.p <= p + 0.001); return last ? last.name : "LIFTOFF"; };
   window.Launch = {
+    stops: STOPS.map(({ p, key, name }) => ({ p, key, name })),
     muted: false,
     stopFor,
     planetFor: (no) => Object.keys(PLANETS)[(Math.max(1, no) - 1) % Object.keys(PLANETS).length],
