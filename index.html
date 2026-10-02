@@ -4,7 +4,7 @@
 <meta name="description" content="A daily game: five questions about the real world, 20 seconds each. Answer with a range. Tighter pays more.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Pixelify+Sans:wght@400;500;700&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jersey+10&family=Lexend:wght@400;500;600;700;800&display=swap">
 <style>
   /* One deliberate world: a night-sky cartridge. Single theme by choice. */
   [hidden] { display: none !important; }
@@ -22,13 +22,13 @@
     --gold: #FFEC27;  /* the truth, the score */
     --u: 4px;
     --display: "Jersey 10", "Pixelify Sans", ui-monospace, monospace;
-    --body: "Pixelify Sans", ui-monospace, Menlo, monospace;
-    --label: "Silkscreen", ui-monospace, monospace;
+    --body: "Lexend", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --label: "Lexend", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   body {
     background: var(--sky); color: var(--paper); font-family: var(--body);
-    font-size: 17px; line-height: 1.5; padding-inline: 16px; padding-block: 0 96px;
-    -webkit-font-smoothing: none;
+    font-size: 16px; line-height: 1.5; padding-inline: 16px; padding-block: 0 96px;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
   }
   #stars { position: fixed; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; pointer-events: none; }
   .wrap { position: relative; z-index: 1; max-width: 460px; margin: 0 auto; }
@@ -46,8 +46,8 @@
   .brand { display: flex; align-items: center; gap: 10px; }
   .brand canvas { width: 32px; height: 32px; image-rendering: pixelated; }
   .brand b { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: 1px; }
-  .lbl { font-family: var(--label); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
-  .sound { font-family: var(--label); font-size: 11px; letter-spacing: 1px; color: var(--paper); background: var(--deep); border: 0; padding: 8px 10px; cursor: pointer; box-shadow: 0 0 0 var(--u) var(--ink); }
+  .lbl { font-family: var(--label); font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .sound { font-family: var(--label); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--paper); background: var(--deep); border: 0; padding: 8px 10px; cursor: pointer; box-shadow: 0 0 0 var(--u) var(--ink); }
   button:focus-visible, [tabindex]:focus-visible { outline: var(--u) solid var(--gold); outline-offset: var(--u); }
 
   .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -57,14 +57,14 @@
   .step { display: grid; gap: 18px; }
   .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .h-case { font-family: var(--display); font-weight: 400; font-size: 54px; line-height: 0.92; margin: 0; text-wrap: balance; }
-  .question { font-family: var(--display); font-weight: 400; font-size: 38px; line-height: 0.98; margin: 0; text-wrap: balance; min-height: 3em; }
+  .question { font-family: var(--body); font-weight: 700; font-size: 26px; line-height: 1.2; letter-spacing: -0.015em; margin: 0; text-wrap: balance; min-height: 2.4em; }
   .demo-tag { font-family: var(--label); font-size: 10px; letter-spacing: 1px; color: var(--ink); background: var(--muted); padding: 2px 6px; }
 
   .rules { display: grid; gap: 12px; }
   .picker-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .picker-row .lbl { width: 100%; }
   .pv { font-family: var(--display); font-size: 20px; line-height: 1; color: var(--paper); background: var(--deep); border: 0; padding: 6px 8px; box-shadow: 0 0 0 3px var(--ink); cursor: pointer; }
-  .pv small { display: block; font-family: var(--label); font-size: 9px; color: var(--muted); }
+  .pv small { display: block; font-family: var(--label); font-size: 10px; font-weight: 600; color: var(--muted); }
   .pv.on { background: var(--a); color: var(--ink); } .pv.on small { color: var(--ink); }
   .rule { display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; }
   .rule i { font-style: normal; font-family: var(--display); font-size: 28px; line-height: 1; color: var(--gold); }
@@ -78,7 +78,7 @@
       calc(-1 * var(--u)) 0 0 0 var(--ink), var(--u) 0 0 0 var(--ink),
       0 calc(2 * var(--u)) 0 0 var(--ink), var(--u) calc(2 * var(--u)) 0 0 var(--ink);
   }
-  .btn small { display: block; font-family: var(--label); font-size: 10px; letter-spacing: 1px; margin-top: 6px; opacity: 0.75; }
+  .btn small { display: block; font-family: var(--label); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; margin-top: 6px; opacity: 0.8; }
   .btn:active { transform: translateY(var(--u)); }
   .btn.ghost { background: var(--deep); color: var(--paper); font-size: 24px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -147,7 +147,7 @@
     border: 0; padding: 10px 4px 8px; cursor: pointer; box-shadow: 0 0 0 var(--u) var(--ink); touch-action: manipulation;
     transition: transform 120ms cubic-bezier(.2, 1.6, .4, 1), background 80ms steps(1);
   }
-  .chip small { display: block; font-family: var(--label); font-size: 10px; letter-spacing: 1px; margin-top: 4px; color: var(--muted); }
+  .chip small { display: block; font-family: var(--label); font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; margin-top: 4px; color: var(--muted); }
   .chip.on { background: var(--a); color: var(--ink); transform: translateY(-3px); box-shadow: 0 0 0 var(--u) var(--ink), 0 6px 0 0 var(--ink); }
   .chip.on small { color: var(--ink); }
   .chip:active { transform: scale(.94); }
@@ -186,8 +186,8 @@
   .rc .p { font-family: var(--display); font-size: 26px; text-align: right; color: var(--gold); }
   .sharebox { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 14px; font-size: 15px; white-space: pre-wrap; line-height: 1.45; }
   .coach { background: var(--gold); color: var(--ink); padding: 12px 14px; font-size: 15px; line-height: 1.4; box-shadow: 0 0 0 var(--u) var(--ink); }
-  .coach b { font-family: var(--label); font-size: 11px; letter-spacing: 1px; display: block; margin-bottom: 2px; }
-  .foot { text-align: center; margin: 28px 0 0; } .foot a { font-family: var(--label); font-size: 11px; letter-spacing: 1px; color: var(--muted); }
+  .coach b { font-family: var(--label); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; display: block; margin-bottom: 4px; }
+  .foot { text-align: center; margin: 28px 0 0; } .foot a { font-family: var(--label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
   .note { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
 
   /* Booklet */
@@ -210,7 +210,7 @@
   footer { margin-top: 56px; text-align: center; }
 
   @media (max-width: 420px) {
-    .h-case { font-size: 44px; } .question { font-size: 32px; } .guess-num .num { font-size: 76px; } .guess { grid-template-columns: 48px 1fr 48px; }
+    .h-case { font-size: 44px; } .question { font-size: 23px; } .guess-num .num { font-size: 76px; } .guess { grid-template-columns: 48px 1fr 48px; }
     .screen { padding: 20px 14px; } .chip { font-size: 28px; }
     .total b { font-size: 96px; } .manual-head h2 { font-size: 46px; }
   }
@@ -219,7 +219,7 @@
     .meta { margin-bottom: 12px; }
     #s-round { gap: 12px; }
     .screen { padding-block: 16px; min-height: 0; }
-    #s-round .question { font-size: 27px; min-height: 0; }
+    #s-round .question { font-size: 21px; min-height: 0; }
     .guess-num .num { font-size: 62px; }
     .guess-num .num.long { font-size: 46px; }
     .guess-num span { font-size: 32px; }
@@ -231,7 +231,7 @@
     .scale { margin-top: 14px; }
     .chips { grid-template-columns: none !important; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
     .chip { font-size: 20px; padding: 9px 0 7px; }
-    .chip small { font-size: 8px; letter-spacing: 0; }
+    .chip small { font-size: 9px; letter-spacing: 0; }
     .worth { padding: 8px 12px; }
     .worth b { font-size: 24px; }
     #lock, #next { padding-block: 13px 11px; font-size: 30px; }
@@ -352,10 +352,19 @@
 
   // Every case, baked in by tools/build.py from content/bank.json + content/schedule.json.
   // On the live site this is null and the server sends only today's case.
+  // Cases change at midnight US Eastern time.
+  const etFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" });
+  const etDate = (d = new Date()) => etFmt.format(d);
+  const etClock = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  function secsToEtMidnight() {
+    const [h, m, sec] = etClock.format(new Date()).split(":").map(Number);
+    return Math.max(0, 86400 - ((h % 24) * 3600 + m * 60 + sec));
+  }
+  const hms = (s) => [s / 3600, (s % 3600) / 60, s % 60].map((v) => String(Math.floor(v)).padStart(2, "0")).join(":");
   let CASES = /*CASES*/null/*END*/;
   if (!CASES) {
     // Static hosting: one file per approved day. Use today's, or the latest one before it.
-    const day = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+    const day = (n) => etDate(new Date(Date.now() - n * 86400000));
     try {
       for (let n = 0; n < 14 && !CASES; n++) {
         const r = await fetch(`cases/${day(n)}.json`, { cache: "no-cache" });
@@ -364,12 +373,22 @@
       if (!CASES) throw new Error("no case");
     }
     catch (e) {
-      document.querySelector(".screen").innerHTML = '<p class="note" style="font-size:16px">Couldn\'t load today\'s case. Check your connection and refresh.</p>';
+      const scr = document.querySelector(".screen");
+      const first = await fetch(`cases/${etDate(new Date(Date.now() + 86400000))}.json`, { cache: "no-cache" }).then((r) => r.ok).catch(() => false);
+      scr.innerHTML = first
+        ? `<div class="step"><span class="lbl">Day 0</span><h1 class="h-case">Day 1 drops at midnight Eastern.</h1>
+             <p style="margin:0">Five questions about the real world, 20 seconds each. Guess the number and say how sure you are. Close enough counts.</p>
+             <div class="total"><span class="lbl">Starts in</span><b id="launch-clock">--:--:--</b></div></div>`
+        : '<p class="note" style="font-size:16px">Couldn\'t load today\'s case. Check your connection and refresh.</p>';
+      if (first) {
+        const t = () => { const el = document.getElementById("launch-clock"); if (el) el.textContent = hms(secsToEtMidnight()); if (secsToEtMidnight() <= 0) location.reload(); };
+        t(); setInterval(t, 1000);
+      }
       return;
     }
   }
   const DAY = 86400000;
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = etDate();
   const live = CASES.filter((c) => c.date <= todayISO);
   const preview = location.hash === "#preview";
   let today = live[live.length - 1] || CASES[0];
@@ -454,11 +473,11 @@
   (function loop(t) { if (t - lastStar > 250) { paintStars(t); lastStar = t; } if (!reduce) requestAnimationFrame(loop); })(0);
   if (reduce) paintStars(0);
 
-  // ---------- Clock to next case (00:00 UTC) ----------
+  // ---------- Clock to the next case (midnight Eastern) ----------
   function tickClock() {
-    const now = new Date(), next = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
-    const s = Math.max(0, Math.floor((next - now) / 1000));
-    $("clock").textContent = [s / 3600, (s % 3600) / 60, s % 60].map(v => String(Math.floor(v)).padStart(2, "0")).join(":");
+    const s = secsToEtMidnight();
+    $("clock").textContent = hms(s);
+    if (s <= 0 && !preview) setTimeout(() => location.reload(), 1500);
   }
   tickClock(); setInterval(tickClock, 1000);
 
