@@ -736,9 +736,63 @@
   const sc = $("stars"), sctx = sc.getContext("2d");
   let stars = [];
   let starW = 0;
+  // A few pixel planets out in the sky, off to the sides (lit from the top left, hard 8-bit shading).
+  function pixelPlanet(r, kind) {
+    const pad = kind === "ringed" ? Math.round(r * 0.9) : 0, size = (r + pad) * 2 + 2;
+    const c = document.createElement("canvas"); c.width = size; c.height = size;
+    const x = c.getContext("2d"), cx = size / 2, cy = size / 2;
+    const hash = (a, b) => { const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5; return n - Math.floor(n); };
+    const PAL = {
+      ringed: (u, v) => { const b = Math.sin(v * 9 + Math.sin(u * 3) * 0.6); return b > 0.45 ? "#FFCCAA" : b > -0.25 ? "#E0A060" : "#AB5236"; },
+      red: (u, v) => (hash(Math.floor(u * 4 + 9), Math.floor(v * 4 + 9)) > 0.72 ? "#7E2553" : hash(Math.floor(u * 7 + 3), Math.floor(v * 7)) > 0.6 ? "#C2603A" : "#E08850"),
+      moon: (u, v) => { for (const [a, b, rr] of [[-0.3, -0.2, 0.25], [0.35, 0.3, 0.2], [0.1, -0.5, 0.15]]) if ((u - a) ** 2 + (v - b) ** 2 < rr * rr) return "#7A7B85"; return "#C2C3C7"; },
+      ice: (u, v) => (Math.abs(v) > 0.8 ? "#FFF1E8" : hash(Math.floor(u * 5 + 2), Math.floor(v * 5 + 2)) > 0.7 ? "#9FE8FF" : "#C2F0FF"),
+    };
+    const dim = (hex, k) => { const n = parseInt(hex.slice(1), 16); return `rgb(${(n >> 16) * k | 0},${((n >> 8) & 255) * k | 0},${(n & 255) * k | 0})`; };
+    const ring = (front) => {
+      if (!pad) return;
+      for (let j = -r; j <= r; j++) for (let i = -r - pad; i <= r + pad; i++) {
+        const d = (i / (r + pad)) ** 2 + (j / ((r + pad) * 0.26)) ** 2;
+        if (d > 1 || d < 0.5 || (j > 0) !== front || (!front && i * i + j * j < r * r)) continue;
+        x.fillStyle = ["#FFCCAA", "#AB8A5C", "#FFF1E8"][Math.floor(d * 9) % 3]; x.fillRect(Math.round(cx + i), Math.round(cy + j), 1, 1);
+      }
+    };
+    ring(false);
+    for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
+      const d = i * i + j * j; if (d > r * r) continue;
+      const u = i / r, v = j / r, lit = -u * 0.6 - v * 0.55 + Math.sqrt(Math.max(0, 1 - u * u - v * v)) * 0.6;
+      x.fillStyle = d > (r - 1) * (r - 1) ? "#0A1029" : dim(PAL[kind](u, v), lit > 0.35 ? 1 : lit > 0.02 ? 0.72 : 0.42);
+      x.fillRect(Math.round(cx + i), Math.round(cy + j), 1, 1);
+    }
+    ring(true);
+    return c;
+  }
+  let planets = [];
+  function placePlanets(w, h) {
+    // Phones: they peek in from the edges. Wide screens: they sit in the open space beside the game.
+    const side = Math.max(0, (w * 4 - 460) / 2 / 4), wide = side > 40;
+    const L = side * 0.45, Rt = w - side * 0.5;
+    planets = wide ? [
+      { img: pixelPlanet(15, "ringed"), x: L, y: h * 0.66 },
+      { img: pixelPlanet(9, "red"), x: Rt, y: h * 0.2 },
+      { img: pixelPlanet(5, "moon"), x: Rt - 14, y: h * 0.86 },
+      { img: pixelPlanet(4, "ice"), x: L + 18, y: h * 0.18 },
+    ] : [   // phones: in the open sky under the game panel
+      { img: pixelPlanet(8, "ringed"), x: w * 0.24, y: h * 0.93 },
+      { img: pixelPlanet(5, "red"), x: w * 0.8, y: h * 0.9 },
+      { img: pixelPlanet(3, "moon"), x: w * 0.92, y: h * 0.97 },
+    ];
+  }
+  function paintPlanets(t) {
+    for (const p of planets) {
+      const bob = reduce ? 0 : Math.round(Math.sin(t / 4000 + p.x) * 0.6);   // the slowest drift
+      sctx.drawImage(p.img, Math.round(p.x - p.img.width / 2), Math.round(p.y - p.img.height / 2) + bob);
+    }
+  }
   function sizeStars() {
     const w = Math.ceil(innerWidth / 4);
     sc.width = w; sc.height = Math.ceil(innerHeight / 4);
+    placePlanets(w, sc.height);
     if (w === starW && stars.length) return;      // same sky, just a taller or shorter window
     starW = w;
     // spread over the tallest the window is likely to get, so a growing toolbar never leaves a bare strip
@@ -766,6 +820,7 @@
       sctx.fillStyle = on > 0.75 ? "#FFF1E8" : on > 0.35 ? "#6C7BB8" : "#2E3E78";
       sctx.fillRect(s.x, s.y, 1, 1);
     }
+    paintPlanets(t);
   }
   sizeStars(); addEventListener("resize", sizeStars);
 
@@ -1585,7 +1640,7 @@
 
   // ---------- Planets: one per day ----------
   const PLANETS = {
-    earth:  { name: "Earth-like", sky: "#29ADFF", paint: (u, v) => { const n = fbm(u * 3 + 5, v * 3, 1); const lat = Math.abs(v);
+    earth:  { name: "Earth", sky: "#29ADFF", paint: (u, v) => { const n = fbm(u * 3 + 5, v * 3, 1); const lat = Math.abs(v);
               if (lat > 0.82) return "#FFF1E8"; if (fbm(u * 4, v * 4 + 9, 4) > 0.68) return "#FFF1E8";
               return n > 0.55 ? (n > 0.66 ? "#AB5236" : "#00E436") : (n > 0.5 ? "#29ADFF" : "#1D5DB8"); } },
     saturn: { name: "Ringed giant", sky: "#C2A16B", ring: ["#FFCCAA", "#AB8A5C", "#FFF1E8"], paint: (u, v) => { const b = Math.sin(v * 18 + fbm(u * 2, v * 2, 2) * 2);
@@ -1696,6 +1751,51 @@
     "...G.G...",
   ].map((r) => (r + ".........").slice(0, 9));
   const ALIEN = [0, 1, 2, 3].map((k) => sprite(alienRows(k & 1, k & 2), APAL));   // [open, blink, open+wave, blink+wave]
+  // The black hole: a round black center, a swirling disk (white-hot inside, purple at the edge,
+  // brighter on the side spinning toward you), a lensed ring arching over and under the hole, and a
+  // dithered glow so it melts into space. Drawn once into 6 frames, then scaled like any sprite.
+  const HOLE = (() => {
+    const W = 80, H = 48, cx = 40, cy = 24, frames = [];
+    const COLS = ["#FFF1E8", "#FFEC27", "#FFA300", "#FF77A8", "#BE3A84", "#7E2553", "#3E2E85"];
+    const shade = (t, a, f) => {                 // t: 0 inner .. 1 outer, a: angle
+      const swirl = Math.sin(a * 5 - f * 1.05 + t * 9) * 0.5 + 0.5;          // spiral streaks that turn
+      const beam = Math.cos(a) * 0.18;                                        // the near side glows brighter
+      const k = Math.max(0, Math.min(COLS.length - 1, Math.floor((t - beam + (swirl > 0.72 ? -0.12 : swirl < 0.22 ? 0.1 : 0)) * COLS.length)));
+      return COLS[k];
+    };
+    for (let f = 0; f < 6; f++) {
+      const [c, x] = off(W, H);
+      const px = (i, j, col) => { x.fillStyle = col; x.fillRect(i, j, 1, 1); };
+      const disk = (front) => {                                               // flat disk, tilted toward us
+        for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+          const dx = (i - cx) / 38, dy = (j - cy) / (front ? 13 : 9), r = Math.hypot(dx, dy);   // the near half sits lower and thicker, hiding the hole's bottom
+          if (r < 0.38 || r > 1) continue;
+          if ((j >= cy) !== front) continue;
+          const t = (r - 0.38) / 0.62;
+          if (t > 0.78 && (i + j) % 2) continue;                              // dithered outer edge
+          px(i, j, shade(t, Math.atan2(dy, dx), f));
+        }
+      };
+      disk(false);                                                            // the far half, behind the hole
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {               // lensed light bending over and under
+        const d = Math.hypot(i - cx, (j - cy) * 1.05);
+        if (d >= 12.5 && d < 18.5) {
+          const t = (d - 12.5) / 6;
+          if (t > 0.6 && (i + j + f) % 2) continue;
+          if (t > 0.85 && (i * 3 + j) % 3) continue;
+          px(i, j, shade(t * 0.9, Math.atan2(j - cy, i - cx) + Math.PI / 2, f));
+        }
+      }
+      for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {               // photon ring, then the black center
+        const d = Math.hypot(i - cx, (j - cy) * 1.05);
+        if (d < 13.2 && d >= 12) px(i, j, (i + f) % 3 ? "#FFF1E8" : "#FFEC27");
+        if (d < 12) px(i, j, "#000000");
+      }
+      disk(true);                                                             // the near half crosses in front
+      frames.push(c);
+    }
+    return frames;
+  })();
   const ROVER = sprite(["...W...", "..WWW..", "WWWWWWW", "WCWWWCW", ".K.K.K."], { W: "#C2C3C7", C: "#29ADFF", K: "#0A1029" });
   const HEART = sprite([".P.P.", "PPPPP", "PPPPP", ".PPP.", "..P.."], { P: "#FF77A8" });
   function rock(seed, r) {
@@ -2042,15 +2142,7 @@
       drawSprite(UFO, x + wob, y, z, S);
       if (Math.floor(tt * 3) % 2) drawSprite(ALIEN_WAVE, x + wob, y - S * 0.42, z, S * 0.18);
     }
-    if (st.key === "hole") {
-      const q = proj(x, y, z); if (!q) return;
-      const rad = S * q.s / 2; if (rad > 500 || rad < 1) return;
-      for (let r = Math.round(rad); r > 0; r -= Math.max(1, Math.round(rad / 10))) {
-        ctx.fillStyle = r < rad * 0.32 ? "#000" : ["#7E2553", "#FF77A8", "#FFA300", "#3E2E85"][(Math.round(r / Math.max(1, rad / 10)) + Math.floor(tt * 6)) % 4];
-        ctx.fillRect(Math.round(q.x - r), Math.round(q.y - r * 0.32), r * 2, Math.max(1, Math.round(r * 0.64)));
-      }
-      ctx.fillStyle = "#000"; const c = Math.round(rad * 0.3); ctx.fillRect(Math.round(q.x - c), Math.round(q.y - c), c * 2, c * 2);
-    }
+    if (st.key === "hole") drawSprite(HOLE[Math.floor(tt * 8) % HOLE.length], x, y, z, S * 1.5);
     if (st.key === "whale") {
       // The hot tub drifts in from the side and settles in the middle of everything.
       const settle = whaleAt ? Math.min(1, (now - whaleAt) / 2600) : 0;
@@ -2373,7 +2465,7 @@
     stops: STOPS.map(({ p, key, name }) => ({ p, key, name })),
     muted: false,
     stopFor,
-    planetFor: (no) => Object.keys(PLANETS)[(Math.max(1, no) - 1) % Object.keys(PLANETS).length],
+    planetFor: () => "earth",   // you always launch from home
     play(s, key, onDone) {
       score = s; planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120);
       $("planet-name").textContent = PLANETS[planetKey].name;
