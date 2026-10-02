@@ -228,10 +228,9 @@
   .truth-tag { position: absolute; top: -46px; transform: translateX(-50%); font-family: var(--display); font-size: 24px; color: var(--gold); white-space: nowrap; line-height: 1; }
   .scale { position: relative; height: 14px; margin-top: 18px; }
   .scale span { position: absolute; transform: translateX(-50%); }
+  .tap-l { font-weight: 400; color: var(--gold); margin-left: 6px; }
+  .chip.on { outline: var(--u) solid var(--gold); outline-offset: 2px; }
   .sure-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-  .worth { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-  .worth b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 0.8; color: var(--gold); font-variant-numeric: tabular-nums; }
-  .worth b::after { content: " PTS"; font-family: var(--label); font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
 
   /* Reveal */
   .verdict { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; align-items: center; padding: 16px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); }
@@ -260,27 +259,10 @@
   .rc .q { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
   .rc .p { font-family: var(--display); font-size: 26px; text-align: right; color: var(--gold); }
   .sharebox { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 14px; font-size: 15px; white-space: pre-wrap; line-height: 1.45; }
-  .coach { background: var(--gold); color: var(--ink); padding: 12px 14px; font-size: 15px; line-height: 1.4; box-shadow: 0 0 0 var(--u) var(--ink); }
   .spot { outline: var(--u) solid var(--gold); outline-offset: 6px; animation: spot 900ms steps(2) infinite; position: relative; z-index: 1; }
   @keyframes spot { 50% { outline-color: transparent; } }
   .nudge { animation: spot 900ms steps(2) infinite, nudge 300ms steps(4); }
   @keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-  #lock.wait { opacity: 0.35; }
-  /* 8-bit text blip: big, readable, never covering the thing you need to tap. */
-  .blip { position: fixed; z-index: 19; left: 14px; right: 14px; max-width: 540px; margin-inline: auto; pointer-events: none;
-    background: var(--ink); color: var(--paper); padding: 14px 18px 16px;
-    box-shadow: 0 0 0 var(--u) var(--paper), 0 0 0 calc(2 * var(--u)) var(--ink), calc(3 * var(--u)) calc(3 * var(--u)) 0 calc(2 * var(--u)) rgba(0, 0, 0, .45);
-    animation: blipIn 220ms steps(4); overflow: hidden; }
-  .blip.pulse { animation: blipPulse 360ms steps(4); }
-  @keyframes blipIn { from { transform: scale(.85); opacity: 0; } }
-  @keyframes blipPulse { 50% { box-shadow: 0 0 0 var(--u) var(--gold), 0 0 0 calc(2 * var(--u)) var(--ink); } }
-  .blip-who { font-family: var(--label); font-size: 12px; letter-spacing: .12em; color: var(--gold); }
-  .blip p { margin: 6px 0 0; font-family: var(--body); font-size: clamp(19px, 5.2vw, 27px); line-height: 1.32; }
-  .blip p::after { content: "▼"; color: var(--gold); font-size: .6em; margin-left: .4em; animation: spot 700ms steps(2) infinite; }
-  .blip p.typing::after { content: ""; }
-  .blip-arrow { position: absolute; width: 0; height: 0; border: 12px solid transparent; transform: translateX(-50%); }
-  .blip-arrow.down { bottom: -24px; border-top-color: var(--paper); }
-  .blip-arrow.up { top: -24px; border-bottom-color: var(--paper); }
   .tut-banner { position: fixed; z-index: 20; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
     background: var(--gold); color: var(--ink); text-align: center; box-shadow: 0 var(--u) 0 var(--ink); display: grid; gap: 2px;
     animation: slideDown 260ms steps(4); }
@@ -288,14 +270,10 @@
   .tut-banner span { font-family: var(--label); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
   @keyframes slideDown { from { transform: translateY(-100%); } }
   body.tutorial .screen { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 78px); }
-  body.tutorial .coach { padding: 8px 12px; font-size: 13px; }
   body.tutorial #s-round { gap: 10px; }
   body.tutorial { padding-top: 76px; }
   .screen.thud { animation: thud 160ms steps(3); }
   @keyframes thud { 33% { transform: translate(1px, 2px); } 66% { transform: translate(-1px, -1px); } }
-  #lock.armed { animation: spot 600ms steps(2) infinite; outline: var(--u) solid var(--paper); outline-offset: 4px; }
-  .coach b.k { display: inline; font-size: inherit; letter-spacing: 0; background: var(--ink); color: var(--gold); padding: 0 6px; margin: 0; }
-  .coach b { font-family: var(--label); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; display: block; margin-bottom: 4px; }
   .foot { text-align: center; margin: 28px 0 0; } .foot a { font-family: var(--label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
   .note { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
 
@@ -341,7 +319,6 @@
     .chips { gap: 6px; }
     .chip { font-size: 20px; padding: 9px 0 7px; }
     .chip small { font-size: 10px; letter-spacing: 0; }
-    .worth b { font-size: 22px; }
     #type-hint { display: none !important; }
     .verdict { padding: 10px 12px; gap: 2px 12px; }
     .verdict .pts { font-size: 46px; }
@@ -362,8 +339,7 @@
     .picker { padding-block: 20px 0; }
     .scale { margin-top: 12px; }
     .stage { width: min(100%, calc(64vh * 9 / 16)); margin-inline: auto; }
-    #lock, #next { padding-block: 13px 11px; font-size: 30px; }
-    .coach { font-size: 13px; padding: 10px 12px; }
+    #next { padding-block: 13px 11px; font-size: 30px; }
     .verdict .pts { font-size: 60px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -382,7 +358,7 @@
   #flash { position: absolute; inset: 0; background: var(--paper); opacity: 0; pointer-events: none; transition: opacity 120ms steps(2); }
   #flash.on { opacity: 1; }
   .stage { cursor: pointer; }
-  .stage-hint { text-align: center; margin: -8px 0 0; }
+
 </style>
 
 <canvas id="stars" aria-hidden="true"></canvas>
@@ -394,7 +370,6 @@
   </div>
   <p class="lbl hop-hint">Tap to continue</p>
 </div>
-<div class="blip" id="blip" aria-live="polite" hidden><span class="blip-who">▶ GUIDE</span><p id="blip-t"></p><i class="blip-arrow" id="blip-arrow"></i></div>
 <div class="tut-banner" id="tut-banner" role="status" hidden><b>TUTORIAL MODE</b><span id="tut-sub">Tap the flashing yellow box</span></div>
 
 <div class="wrap">
@@ -416,7 +391,7 @@
       <div class="picker-row" id="preview-row" hidden></div>
       <div class="rules">
         <div class="rule"><i>1</i><div><b>Guess the number.</b> Swipe, tap, or type it.</div></div>
-        <div class="rule"><i>2</i><div><b>Say how sure you are.</b> Tighter windows pay more. Miss and you get 0.</div></div>
+        <div class="rule"><i>2</i><div><b>Tap how sure you are.</b> That locks it in. Tighter pays more, but miss and you get 0.</div></div>
         <div class="rule"><i>3</i><div><b>The stakes climb.</b> Rounds 3 and 4 are ×2. The final round is ×4.</div></div>
         <div class="rule"><i>4</i><div><b>25 seconds a round.</b> A perfect day is 1,000.</div></div>
       </div>
@@ -428,7 +403,6 @@
     <section class="step" id="s-round" hidden>
       <div class="reach" id="reach" hidden></div>
       <div class="row"><span class="r-head"><span class="lbl" id="r-no">Round 1 of 5</span><span class="mult" id="mult" hidden>×2</span></span><div class="dots" id="dots"></div></div>
-      <div class="coach" id="coach" hidden></div>
       <div class="timer" id="timer-row"><div class="blocks20" id="blocks20"></div><div class="secs" id="secs">25</div></div>
       <h2 class="question" id="q"></h2>
       <div class="guess" id="guess">
@@ -447,10 +421,9 @@
       </div>
       <p class="type-hint lbl" id="type-hint">Swipe or tap the bar, or type your guess</p>
       <div class="sure" id="sure">
-        <div class="sure-h"><span class="lbl">How sure are you?</span><span class="worth" id="worth"><span class="lbl" id="width-l">40 to 60%</span><b id="worth-v">5</b></span></div>
+        <div class="sure-h"><span class="lbl">How sure are you? <b class="tap-l">Tap to lock in</b></span></div>
         <div class="chips" id="chips"></div>
       </div>
-      <button class="btn" id="lock">LOCK IT IN</button>
 
       <!-- Reveal parts (shown after lock) -->
       <div class="verdict" id="verdict" hidden><div class="pts" id="pts">0</div><div class="vt" id="vt"></div><div class="vs" id="vs"></div></div>
@@ -471,7 +444,6 @@
         </div>
         <div class="flash" id="flash"></div>
       </div>
-      <p class="lbl stage-hint" id="stage-hint" hidden>Tap to skip</p>
       <div class="total"><span class="lbl">Your score</span><b id="total">0</b><span class="lbl">out of 1,000</span></div>
       <div class="mirror"><span class="lbl">What this says about you</span><div class="vt" id="m-title"></div><div class="vs" id="m-sub"></div></div>
       <div class="recap" id="recap"></div>
@@ -534,63 +506,24 @@
   let today = live[live.length - 1] || CASES[0];
   let CASE = today.rounds;
 
-  // Tutorial: a practice round with no clock and a coach.
+  // Tutorial: a practice round with no clock. The yellow bar says what to do next.
   const PRACTICE = { q: "If you sleep 8 hours a night, what % of your life do you spend asleep?", min: 0, max: 100, unit: "%", truth: 33,
     why: "8 out of 24 hours is a third. By 75, that's about 25 years asleep.", src: "Simple math" };
   // Hands-on tutorial: one move at a time, highlighted, and it only moves on once you've done it.
   const TUT = [
-    { blip: "Swipe or tap the bar to pick your guess.", sub: "Tap or swipe the flashing yellow box", el: "track", text: "<b>STEP 1 OF 4 · MAKE YOUR GUESS</b>Swipe or tap the bar to pick a number." },
-    { blip: "Nice! Tap − or + to fine-tune it. You can also tap the number and type.", sub: "Tap − or + inside the yellow box", el: "guess", text: "<b>STEP 2 OF 4 · FINE-TUNE IT</b>Tap <b class='k'>−</b> or <b class='k'>+</b> to nudge it. You can also type it." },
-    { blip: "How sure are you? Tap a window. Tighter pays more, but only if you're right!", sub: "Tap a button in the yellow box", el: "sure", text: "<b>STEP 3 OF 4 · HOW SURE ARE YOU?</b>Tighter windows pay more, but only if you're right. Try <b class='k'>±5</b>." },
-    { blip: "The yellow number is what you'll score if you're right. Tap LOCK IT IN.", sub: "Tap the yellow box to lock it in", el: "lock", text: "<b>STEP 4 OF 4 · LOCK IT IN</b>The yellow number is what you'll score if you're right." },
+    { sub: "Swipe the flashing bar to make your guess", el: "track" },
+    { sub: "How sure are you? Tap one to lock it in", el: "sure" },
   ];
-  const COACH_DONE = "<b>THAT'S THE GAME</b>The gold line is the answer. Inside your window scores, and tighter scores more. Real rounds have a 25-second clock.";
   let tut = 0;
   function setTut(n) {
     tut = n;
     document.querySelectorAll(".spot").forEach((e) => e.classList.remove("spot"));
-    if (!practicing || n >= TUT.length) { $("lock").classList.remove("wait"); return; }
+    if (!practicing || n >= TUT.length) return;
     tutBanner(TUT[n].sub);
-    $("coach").innerHTML = TUT[n].text;
-    showBlip(TUT[n].blip, $(TUT[n].el));
     $(TUT[n].el).classList.add("spot");
-    $("lock").classList.toggle("wait", n < 3);
     if (n > 0) { tone(660, 0.05); tone(990, 0.07, 0.06); }
     else { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.09, i * 0.09)); }   // tutorial intro jingle
   }
-  // ---- the blip: types out, sits on the far side of the screen from its target ----
-  let blipTarget = null, blipTimer = 0;
-  function placeBlip() {
-    const b = $("blip"); if (b.hidden || !blipTarget) return;
-    const r = blipTarget.getBoundingClientRect(), banner = $("tut-banner");
-    const topLimit = (banner.hidden ? 0 : banner.getBoundingClientRect().bottom) + 14;
-    const below = r.top + r.height / 2 < innerHeight * 0.45;    // target near the top: put the blip under it
-    b.style.top = below ? Math.round(r.bottom + 26) + "px" : Math.max(topLimit, Math.round(r.top - 26 - b.offsetHeight)) + "px";
-    const a = $("blip-arrow"), br = b.getBoundingClientRect();
-    a.className = "blip-arrow " + (below ? "up" : "down");
-    a.style.left = Math.min(br.width - 24, Math.max(24, r.left + r.width / 2 - br.left)) + "px";
-  }
-  function showBlip(text, target) {
-    const b = $("blip"), t = $("blip-t");
-    blipTarget = target; b.hidden = false; b.classList.remove("pulse");
-    b.style.animation = "none"; void b.offsetWidth; b.style.animation = "";
-    clearInterval(blipTimer);
-    if (reduce) { t.textContent = text; t.classList.remove("typing"); placeBlip(); return; }
-    let i = 0; t.textContent = ""; t.classList.add("typing");
-    blipTimer = setInterval(() => {
-      i += 1; t.textContent = text.slice(0, i);
-      if (i % 2 === 0 && text[i - 1] !== " ") tone(1250 + (i % 5) * 90, 0.012, 0, "square", 0.018);
-      placeBlip();
-      if (i >= text.length) { clearInterval(blipTimer); t.classList.remove("typing"); }
-    }, 18);
-    placeBlip();
-  }
-  function hideBlip() { clearInterval(blipTimer); $("blip").hidden = true; blipTarget = null; }
-  function pulseBlip() { const b = $("blip"); if (b.hidden) return; b.classList.remove("pulse"); void b.offsetWidth; b.classList.add("pulse"); }
-  addEventListener("resize", placeBlip);
-  addEventListener("scroll", placeBlip, { passive: true });
-  setInterval(placeBlip, 300);
-
   function tutBanner(sub) {
     const on = !!sub;
     $("tut-banner").hidden = !on;
@@ -600,6 +533,8 @@
       el.style.animation = "none"; void el.offsetWidth; el.style.animation = "pop 260ms cubic-bezier(.2, 1.6, .4, 1)";
     }
   }
+  // Tapped the wrong thing during the tutorial: bounce the instruction.
+  const nudgeTut = () => { if (practicing && tut < TUT.length) { tutBanner(TUT[tut].sub); tone(520, 0.05); } };
   const tutDid = (step) => { if (practicing && tut === step) setTimeout(() => setTut(step + 1), step === 0 ? 450 : 250); };
   let practicing = false;
   const seenTutorial = () => { try { return localStorage.getItem("fifty-tutorial") === "1"; } catch (e) { return false; } };
@@ -821,7 +756,7 @@
   const r = () => practicing ? PRACTICE : CASE[ri];
   const EDGE = 6;  // % of the bar at each end that snaps to the min / max
   const pos = (v) => EDGE + (100 - 2 * EDGE) * Math.min(1, Math.max(0, (v - r().min) / span(r())));
-  let c = 50, g = 15, chipVals = [];
+  let c = 50, g = 15, chipVals = [], hoverG = null;
   const lohi = () => [c - g, c + g];
   // Give-or-take choices scale with the question, rounded to clean numbers.
   const NICE = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750,
@@ -848,16 +783,16 @@
     $("chips").style.gridTemplateColumns = `repeat(${Math.min(4, chipVals.length)}, 1fr)`;
   }
   function render() {
-    const R = r(), [lo, hi] = lohi();
+    const R = r(), gv = locked ? g : hoverG, lo = c - (gv || 0), hi = c + (gv || 0);
     $("cursor").style.left = pos(c) + "%";
+    // The window only shows once you've picked it (or while hovering a choice).
+    $("fill").hidden = gv === null;
     // centered on the guess, never thinner than a few pixels so tight ranges stay visible
     $("fill").style.left = pos(c) + "%";
     $("fill").style.width = (pos(hi) - pos(lo)) + "%";
     if (document.activeElement !== $("c-v")) $("c-v").value = c;
-    $("width-l").textContent = g === 0 ? `Exactly ${num(c)}${R.unit}` : `${num(Math.max(R.min, lo))} to ${num(Math.min(R.max, hi))}${R.unit}`;
-    $("worth-v").textContent = num(pointsFor(normWidth(R, lo, hi)) * multNow());
-    [...$("chips").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.g) === g));
-    track.setAttribute("aria-valuetext", `${c}${R.unit}, give or take ${g}`);
+    [...$("chips").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.g) === gv));
+    track.setAttribute("aria-valuetext", `${c}${R.unit}`);
   }
   const buzz = (strong) => haptic(strong);
   function setC(v, quiet) {
@@ -909,43 +844,38 @@
     let hold = null;
     const stop = () => { clearTimeout(hold); clearInterval(hold); hold = null; };
     $(id).addEventListener("pointerdown", (e) => {
-      e.preventDefault(); setC(c + d * stepFor(r())); tutDid(1);
+      e.preventDefault(); setC(c + d * stepFor(r())); tutDid(0);
       hold = setTimeout(() => { hold = setInterval(() => setC(c + d * stepFor(r())), 60); }, 350);
     });
     for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $(id).addEventListener(ev, stop);
   }
 
   $("chips").addEventListener("click", (e) => {
-    const b = e.target.closest(".chip"); if (b) { setG(Number(b.dataset.g)); tutDid(2); }
+    const b = e.target.closest(".chip"); if (!b || locked) return;
+    if (practicing && tut < 1) { nudgeTut(); return; }
+    setG(Number(b.dataset.g)); lockIn();
   });
+  $("chips").addEventListener("pointerover", (e) => { const b = e.target.closest(".chip"); if (b && !locked) { hoverG = Number(b.dataset.g); render(); } });
+  $("chips").addEventListener("pointerleave", () => { if (!locked) { hoverG = null; render(); } });
 
   // Typing the guess.
   const cin = $("c-v");
   cin.addEventListener("focus", () => cin.select());
   cin.addEventListener("input", () => {
     const raw = cin.value.replace(/[^0-9]/g, ""); cin.value = raw;
-    if (raw !== "") { setC(Number(raw), true); tutDid(0); tutDid(1); }
+    if (raw !== "") { setC(Number(raw), true); tutDid(0); }
   });
   cin.addEventListener("change", () => { cin.value = c; });
-  // Enter twice locks it in (once arms it, so nobody locks by accident). On the reveal, Enter goes on.
-  let enterAt = 0;
-  const LOCK_LABEL = "LOCK IT IN";
-  function disarmEnter() { enterAt = 0; $("lock").innerHTML = LOCK_LABEL; $("lock").classList.remove("armed"); }
+  // Keyboard: Tab to a window and press Enter to lock it in. On the reveal, Enter goes on.
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || e.repeat) return;
     if (!$("hop").hidden) { e.preventDefault(); window.Launch && window.Launch.skip(); return; }
     if (!steps.round.hidden) {
       const tb = e.target && e.target.closest && e.target.closest("button");
-      if (tb && tb.id !== "lock" && tb.id !== "next") return;
+      if (tb && tb.id !== "next") return;
       e.preventDefault();
       if (locked) { if (!$("next").hidden) $("next").click(); return; }
-      if (practicing && tut < 3) { lockIn({ type: "click" }); return; }
-      if (enterAt && performance.now() - enterAt < 2500) { disarmEnter(); lockIn(); return; }
-      enterAt = performance.now();
-      $("lock").innerHTML = 'PRESS ENTER AGAIN<small>TO LOCK IT IN</small>';
-      $("lock").classList.add("armed");
-      tone(660, 0.05);
-      setTimeout(() => { if (enterAt && performance.now() - enterAt >= 2400) disarmEnter(); }, 2500);
+      if (document.activeElement === cin) { cin.blur(); $("chips").querySelector(".chip").focus(); }
     } else if (!steps.title.hidden && document.activeElement && document.activeElement.tagName !== "BUTTON") {
       $("start").click();
     }
@@ -1040,9 +970,8 @@
     if (!practicing && !preview) store.set(progKey(today.no), { results, open: ri });
     locked = false;
     const R = r();
-    buildChips();
-    disarmEnter();
-    $("type-tag").textContent = matchMedia("(pointer: coarse)").matches ? "tap to type" : "type it in · enter ×2 to lock";
+    buildChips(); hoverG = null;
+    $("type-tag").textContent = matchMedia("(pointer: coarse)").matches ? "tap to type" : "type it in";
     c = Math.round(R.min + span(R) / 2);
     g = chipVals[chipVals.length - 1];
     $("r-no").textContent = practicing ? "How to play" : `Round ${ri + 1} of ${CASE.length}`;
@@ -1053,7 +982,6 @@
     if (m > 1) { tone(523, 0.06); tone(784, 0.09, 0.07); if (ri === CASE.length - 1) tone(1047, 0.14, 0.15); }
     $("dots").hidden = practicing;
     $("timer-row").hidden = practicing;
-    $("coach").hidden = true;
     setTut(0);
     if (!practicing) tutBanner(null);
     if (!practicing && ri === 0) { RAIL.cur = RAIL.target = 0; buildClimb(); if ($("climb").dataset.built) placeRocket(0); }
@@ -1072,7 +1000,7 @@
     $("scale").innerHTML = [0, 0.25, 0.5, 0.75, 1].map((k) => `<span style="left:${EDGE + (100 - 2 * EDGE) * k}%">${short(Math.round(R.min + k * span(R)))}</span>`).join("");
     $("unit").classList.toggle("wordy", R.unit.trim().length > 4);
     for (const id of ["verdict", "why", "next", "truth", "truth-tag", "ppl-line"]) $(id).hidden = true;
-    for (const id of ["sure", "worth", "lock", "type-hint"]) $(id).hidden = false;
+    for (const id of ["sure", "type-hint"]) $(id).hidden = false;
     render();
     clearInterval(timer);
     document.querySelector(".screen").scrollIntoView({ block: "start" });
@@ -1100,12 +1028,11 @@
 
   function lockIn(e) {
     if (locked) return;
-    if (e && e.type === "click" && !(practicing && tut < 3)) disarmEnter();
-    if (practicing && tut < 3 && e && e.type === "click") { pulseBlip(); return; }
+    if (practicing && tut < 1) { nudgeTut(); return; }
     setTut(TUT.length);
     // Take whatever is typed in a number box when time runs out.
     if (document.activeElement === cin) cin.blur();
-    locked = true; clearInterval(timer); sfx.lock(); endDrag(); haptic(true);
+    locked = true; clearInterval(timer); sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
     cin.disabled = true; $("minus").disabled = $("plus").disabled = true;
     const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w) : 0, m = multNow(), pts = base * m;
@@ -1119,11 +1046,9 @@
       setTimeout(() => climbTo(runTotal / 1000), 650);
     }
     else {
-      $("coach").innerHTML = COACH_DONE; tutBanner("Nice! Tap the yellow button to start today's game"); $("next").classList.add("spot");
-      const goLbl = played(today.no) ? "SEE YOUR RESULT" : "START TODAY'S CASE";
-      showBlip(inside ? "You got it! The gold line is the answer. Inside your window, you score. Tap " + goLbl + "." : "So close! The gold line is the answer. Land inside your window to score. Tap " + goLbl + ".", $("next"));
+      tutBanner(inside ? "You got it! Gold line = the answer. Tap the yellow button" : "Gold line = the answer. Catch it to score. Tap the yellow button"); $("next").classList.add("spot");
     }
-    for (const id of ["sure", "worth", "lock", "type-hint"]) $(id).hidden = true;
+    for (const id of ["sure", "type-hint"]) $(id).hidden = true;
 
     // The truth drops onto the track.
     $("truth").style.left = pos(R.truth) + "%"; $("truth-tag").style.left = pos(R.truth) + "%";
@@ -1173,11 +1098,10 @@
     begin(!seenTutorial());
   });
   $("howto").addEventListener("click", () => begin(true));
-  $("lock").addEventListener("click", lockIn);
   $("next").addEventListener("click", () => {
     if (practicing) {
       // Same gate as START: one play per day, and pick up a game in progress.
-      practicing = false; markTutorial(); tutBanner(null); hideBlip(); $("next").classList.remove("spot");
+      practicing = false; markTutorial(); tutBanner(null); $("next").classList.remove("spot");
       const done = played(today.no);
       if (done) { results = done.results; finish(true); return; }
       begin(false); return;
@@ -1197,7 +1121,7 @@
     if (!L || !st) { then(); return; }
     if (hopTo.close) hopTo.close(true);              // never stack two flights
     hopBack = { parent: st.parentNode, next: st.nextSibling };
-    $("hop-frame").appendChild(st); st.hidden = false; $("stage-hint").hidden = true;
+    $("hop-frame").appendChild(st); st.hidden = false;
     $("hop-round").textContent = `Round ${ri + 1} of ${CASE.length}`;
     $("hop-pts").textContent = miss ? "+0" : `+${num(to - from)} · ${num(to)} PTS`;
     $("hop-err").hidden = !miss;
@@ -1227,11 +1151,12 @@
     showClimb(false);
     show("end");
     const L = window.Launch, totalPts = results.reduce((s, x) => s + x.pts, 0);
-    $("stage").hidden = !L || again;
-    $("stage-hint").hidden = !L || again;
-    if (L && !again) {
-      L.muted = !soundOn;
-      L.play(totalPts, L.planetFor(today.no), () => { $("stage-hint").hidden = true; });
+    // The flight already happened round by round. The end just shows where you ended up.
+    $("stage").hidden = !L;
+   
+    if (L) {
+      L.muted = again || !soundOn;
+      L.rest(totalPts, L.planetFor(today.no));
       requestAnimationFrame(() => document.querySelector(".screen").scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" }));
     }
     const total = results.reduce((s, x) => s + x.pts, 0);
@@ -1950,6 +1875,18 @@
       if (pStart === 0 && !reduce) { sfx.countdown(); sfx.liftoff(); launch.t1 = setTimeout(() => { introAt = performance.now(); intro = true; }, 750); }
       else { t0 = performance.now(); running = true; hiss(0, 0.6, 400, 3500, 0.2, 1.4); }
       launch.t2 = setTimeout(() => sfx.humStart(), pStart === 0 ? 1800 : 50);
+    },
+    // The end screen: no flight, just the view from where you ended up.
+    rest(s, key) {
+      score = s; planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120);
+      $("planet-name").textContent = PLANETS[planetKey].name;
+      clearTimeout(launch.t1); clearTimeout(launch.t2); clearTimeout(hopTimer); sfx.humStop();
+      hopping = false; hopCb = null; doneCb = null; intro = false; running = false; arrived = false;
+      pStart = 0; pEnd = Math.max(0.06, s / 1000); prog = pEnd; whaleAt = 0; helloAt = 0;
+      shown = new Set(STOPS.filter((st) => st.p <= pEnd + 0.001).map((st) => st.key));
+      $("callout").classList.remove("on");
+      if (shown.has("whale")) { whaleAt = performance.now() - 2600; setTimeout(() => { helloAt = performance.now(); sayHello(); }, 600); }
+      arrive(performance.now());
     },
     // Jump straight to the end (tap to skip).
     skip() {
