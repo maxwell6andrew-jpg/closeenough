@@ -66,9 +66,22 @@ async function tally(entry) {
   });
 }
 
+// Each finished game is counted once per device. If counting failed (offline, or the game was
+// played on an older version of the site), it catches up the next time the page opens.
+const countedKey = (no) => "fifty-counted-" + no;
+const isCounted = (no) => { try { return localStorage.getItem(countedKey(no)) === "1"; } catch (e) { return true; } };
+const markCounted = (no) => { try { localStorage.setItem(countedKey(no), "1"); } catch (e) {} };
+async function count(entry) {
+  if (CE.preview || !entry || !(entry.no > 0) || isCounted(entry.no)) return;
+  await tally(entry);
+  markCounted(entry.no);
+}
+// Catch up on recent days played here but never counted (only the last few days, so old history isn't re-counted).
+for (const e of CE.localEntries()) if (e.no >= CE.todayNo() - 2) count(e).catch(() => {});
+
 // The game tells us when a day is finished.
 document.addEventListener("ce:played", (ev) => {
-  if (!CE.preview) tally(ev.detail).catch(() => {});
+  count(ev.detail).catch(() => {});
   if (current) upload(current, ev.detail).catch(() => {});
 });
 

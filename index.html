@@ -1324,7 +1324,9 @@
     preview,
     localEntries,
     // From your account: fill in days this device doesn't have yet (a day you played elsewhere counts here too).
-    saveEntry(no, e) { if (!store.get(playedKey(no)) && e && typeof e.total === "number") store.set(playedKey(no), { no, date: e.date, theme: e.theme, total: e.total, results: e.results || [] }); },
+    // A day synced from your account was already counted on the device you played it on.
+    saveEntry(no, e) { if (!store.get(playedKey(no)) && e && typeof e.total === "number") { store.set(playedKey(no), { no, date: e.date, theme: e.theme, total: e.total, results: e.results || [] }); try { localStorage.setItem("fifty-counted-" + no, "1"); } catch (err) {} } },
+    todayNo: () => today.no,
     setUser(u) {
       acctUser = u;
       $("signin").hidden = !!u; $("acct-foot").hidden = !u;
@@ -2263,4 +2265,4 @@
 })();
 
 </script>
-<script type="module" src="assets/account.js"></script>
+<script type="module" src="assets/account.js?v=aa0bf636"></script>
