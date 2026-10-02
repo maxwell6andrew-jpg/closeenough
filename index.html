@@ -186,6 +186,12 @@
   .rc .p { font-family: var(--display); font-size: 26px; text-align: right; color: var(--gold); }
   .sharebox { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 14px; font-size: 15px; white-space: pre-wrap; line-height: 1.45; }
   .coach { background: var(--gold); color: var(--ink); padding: 12px 14px; font-size: 15px; line-height: 1.4; box-shadow: 0 0 0 var(--u) var(--ink); }
+  .spot { outline: var(--u) solid var(--gold); outline-offset: 6px; animation: spot 900ms steps(2) infinite; position: relative; z-index: 1; }
+  @keyframes spot { 50% { outline-color: transparent; } }
+  .nudge { animation: spot 900ms steps(2) infinite, nudge 300ms steps(4); }
+  @keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  #lock.wait { opacity: 0.35; }
+  .coach b.k { display: inline; font-size: inherit; letter-spacing: 0; background: var(--ink); color: var(--gold); padding: 0 6px; margin: 0; }
   .coach b { font-family: var(--label); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; display: block; margin-bottom: 4px; }
   .foot { text-align: center; margin: 28px 0 0; } .foot a { font-family: var(--label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
   .note { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
@@ -291,7 +297,7 @@
       <div class="coach" id="coach" hidden></div>
       <div class="timer" id="timer-row"><div class="blocks20" id="blocks20"></div><div class="secs" id="secs">20</div></div>
       <h2 class="question" id="q"></h2>
-      <div class="guess">
+      <div class="guess" id="guess">
         <button class="stepper" id="minus" aria-label="One lower">−</button>
         <label class="guess-num"><input class="num" id="c-v" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" aria-label="Your guess" value="50"><span id="unit">%</span></label>
         <button class="stepper" id="plus" aria-label="One higher">+</button>
@@ -397,8 +403,25 @@
   // Tutorial: a practice round with no clock and a coach.
   const PRACTICE = { q: "If you sleep 8 hours a night, what % of your life do you spend asleep?", min: 0, max: 100, unit: "%", truth: 33,
     why: "8 out of 24 hours is a third. By 75, that's about 25 years asleep.", src: "Simple math" };
-  const COACH_SET = "<b>PRACTICE ROUND</b>Swipe or tap the bar to set your guess, then pick how sure you are. The surer you are, the more it pays, but only if you're right. No clock this time. In the real game you get 20 seconds.";
-  const COACH_DONE = "<b>THAT'S THE GAME</b>If the answer lands inside your give-or-take, you score. The surer you were, the bigger the score. Miss it and you get 0. Ready for the real thing?";
+  // Hands-on tutorial: one move at a time, highlighted, and it only moves on once you've done it.
+  const TUT = [
+    { el: "track", text: "<b>STEP 1 OF 4 · MAKE YOUR GUESS</b>Swipe or tap the bar to pick a number. Try it now." },
+    { el: "guess", text: "<b>STEP 2 OF 4 · FINE-TUNE IT</b>Nice. Now tap <b class='k'>−</b> or <b class='k'>+</b> to nudge it by one. You can also tap the big number and type it." },
+    { el: "sure", text: "<b>STEP 3 OF 4 · HOW SURE ARE YOU?</b>Pick a window. Tighter pays more, but only if the answer lands inside. Try <b class='k'>±5</b>." },
+    { el: "lock", text: "<b>STEP 4 OF 4 · LOCK IT IN</b>\"Worth\" shows what you'll score if you're right. Happy with it? Tap <b class='k'>LOCK IT IN</b>." },
+  ];
+  const COACH_DONE = "<b>THAT'S THE GAME</b>The gold line is the real answer. Inside your window, you score. The tighter your window, the bigger the score. Miss it and you get 0. In the real game you get 20 seconds a round.";
+  let tut = 0;
+  function setTut(n) {
+    tut = n;
+    document.querySelectorAll(".spot").forEach((e) => e.classList.remove("spot"));
+    if (!practicing || n >= TUT.length) { $("lock").classList.remove("wait"); return; }
+    $("coach").innerHTML = TUT[n].text;
+    $(TUT[n].el).classList.add("spot");
+    $("lock").classList.toggle("wait", n < 3);
+    if (n > 0) { tone(660, 0.05); tone(990, 0.07, 0.06); }
+  }
+  const tutDid = (step) => { if (practicing && tut === step) setTimeout(() => setTut(step + 1), step === 0 ? 450 : 250); };
   let practicing = false;
   const seenTutorial = () => { try { return localStorage.getItem("fifty-tutorial") === "1"; } catch (e) { return false; } };
   const markTutorial = () => { try { localStorage.setItem("fifty-tutorial", "1"); } catch (e) {} };
@@ -613,6 +636,7 @@
     track.classList.add("grab");
     drag = true;
     follow(e.clientX);
+    tutDid(0);
     e.preventDefault();
   });
   track.addEventListener("pointermove", (e) => { if (drag && !locked) follow(e.clientX); });
@@ -631,14 +655,14 @@
     let hold = null;
     const stop = () => { clearTimeout(hold); clearInterval(hold); hold = null; };
     $(id).addEventListener("pointerdown", (e) => {
-      e.preventDefault(); setC(c + d * stepFor(r()));
+      e.preventDefault(); setC(c + d * stepFor(r())); tutDid(1);
       hold = setTimeout(() => { hold = setInterval(() => setC(c + d * stepFor(r())), 60); }, 350);
     });
     for (const ev of ["pointerup", "pointerleave", "pointercancel"]) $(id).addEventListener(ev, stop);
   }
 
   $("chips").addEventListener("click", (e) => {
-    const b = e.target.closest(".chip"); if (b) setG(Number(b.dataset.g));
+    const b = e.target.closest(".chip"); if (b) { setG(Number(b.dataset.g)); tutDid(2); }
   });
 
   // Typing the guess.
@@ -646,7 +670,7 @@
   cin.addEventListener("focus", () => cin.select());
   cin.addEventListener("input", () => {
     const raw = cin.value.replace(/[^0-9]/g, ""); cin.value = raw;
-    if (raw !== "") setC(Number(raw), true);
+    if (raw !== "") { setC(Number(raw), true); tutDid(0); tutDid(1); }
   });
   cin.addEventListener("change", () => { cin.value = c; });
   cin.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); cin.blur(); lockIn(); } });
@@ -662,7 +686,7 @@
     $("dots").hidden = practicing;
     $("timer-row").hidden = practicing;
     $("coach").hidden = !practicing;
-    $("coach").innerHTML = COACH_SET;
+    setTut(0);
     cin.disabled = false;
     const digits = String(R.max).length;
     cin.maxLength = digits;
@@ -702,8 +726,13 @@
     $("secs").textContent = n;
   }
 
-  function lockIn() {
+  function lockIn(e) {
     if (locked) return;
+    if (practicing && tut < 3 && e && e.type === "click") {
+      const sp = document.querySelector(".spot"); if (sp) { sp.classList.remove("nudge"); void sp.offsetWidth; sp.classList.add("nudge"); }
+      tone(196, 0.08); return;
+    }
+    setTut(TUT.length);
     // Take whatever is typed in a number box when time runs out.
     if (document.activeElement === cin) cin.blur();
     locked = true; clearInterval(timer); sfx.lock(); endDrag();
