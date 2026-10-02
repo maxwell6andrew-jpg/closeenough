@@ -257,6 +257,30 @@
   .total b { font-family: var(--display); font-weight: 400; font-size: 120px; line-height: 0.8; color: var(--gold); font-variant-numeric: tabular-nums; }
   .mirror { padding: 18px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); display: grid; gap: 6px; }
   .mirror .vt { color: var(--gold); font-size: 26px; }
+  /* My Close Enough */
+  .textbtn { background: none; border: 0; padding: 6px 0; font: inherit; font-family: var(--label); font-size: 14px; letter-spacing: .08em; color: var(--muted); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; justify-self: center; }
+  .textbtn:active { color: var(--paper); }
+  .acct { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 14px; display: grid; gap: 10px; }
+  .acct p { margin: 0; font-size: 15px; line-height: 1.4; color: var(--paper); }
+  .acct-sync { color: var(--muted); }
+  .acct-sync:empty { display: none; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 10px 8px 8px; display: grid; gap: 2px; text-align: center; }
+  .tile b { font-family: var(--display); font-weight: 400; font-size: 32px; line-height: 1; color: var(--gold); }
+  .tile span { font-family: var(--label); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .insights { display: grid; gap: 8px; }
+  .insight { border-left: var(--u) solid var(--a); padding-left: 12px; font-size: 15px; line-height: 1.35; color: var(--paper); }
+  .insight small { display: block; color: var(--muted); font-size: 12px; }
+  .hist { display: grid; gap: 6px; }
+  .hrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; background: var(--deep); padding: 8px 10px; box-shadow: 0 0 0 2px var(--ink); }
+  .hrow .ht { font-size: 14px; color: var(--paper); line-height: 1.3; }
+  .hrow .ht small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .04em; }
+  .hrow .hs { font-family: var(--display); font-size: 24px; color: var(--gold); }
+  .hrow .sq { display: flex; gap: 3px; margin-top: 4px; }
+  .hrow .sq i { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--ink); }
+  .hist-empty { color: var(--muted); font-size: 14px; }
+  .acct-foot { display: grid; }
+
   /* Your answers: one little card per round, with a fun note and its source. */
   .recap { display: grid; gap: 12px; }
   .recap-h { margin: 4px 0 -2px; }
@@ -423,6 +447,7 @@
       </div>
       <button class="btn" id="start">START<small>UP TO 1,000 POINTS</small></button>
       <button class="btn ghost" id="howto">HOW TO PLAY<small>QUICK PRACTICE</small></button>
+      <button class="textbtn" id="to-stats-t">MY STATS</button>
     </section>
 
     <!-- Round -->
@@ -456,6 +481,21 @@
       <button class="btn" id="next" hidden>NEXT ROUND</button>
     </section>
 
+    <!-- My Close Enough: stats for everyone, and an optional Google sign-in that saves them to your account -->
+    <section class="step" id="s-stats" hidden>
+      <div class="row"><span class="lbl">My Close Enough</span><button class="textbtn" id="stats-back">BACK</button></div>
+      <div class="acct" id="acct">
+        <p id="acct-t">Sign in to save your streak and history to your account, so they follow you to any device.</p>
+        <button class="btn" id="signin" hidden>SIGN IN WITH GOOGLE</button>
+        <p class="acct-sync lbl" id="acct-sync"></p>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="insights" id="insights"></div>
+      <span class="lbl" id="hist-h">Your days</span>
+      <div class="hist" id="hist"></div>
+      <div class="acct-foot" id="acct-foot" hidden><button class="textbtn" id="signout">SIGN OUT</button></div>
+    </section>
+
     <!-- End -->
     <section class="step" id="s-end" hidden>
       <div class="row"><span class="lbl" id="closed-l">Case #001 closed</span></div>
@@ -474,6 +514,7 @@
       <div class="recap" id="recap"></div>
       <div class="sharebox" id="share"></div>
       <div class="row2"><button class="btn" id="copy" style="font-size:26px">COPY</button><button class="btn ghost" id="again">BACK</button></div>
+      <button class="btn ghost" id="to-stats-e">MY STATS<small id="to-stats-sub">SAVE YOUR STREAK WITH GOOGLE</small></button>
       <p class="note" id="copied">Come back tomorrow for case #002.</p>
     </section>
   </main>
@@ -760,7 +801,8 @@
     store.set("fifty-streak", { last: no, count });
     return count;
   }
-  const streakNow = () => { const st = store.get("fifty-streak"); return st && st.last >= today.no - 1 ? st.count : 0; };
+  // Counted from the days you've played (including ones synced from your account on another device).
+  const streakNow = () => streaks(localEntries().map((e) => e.no)).cur;
   const tomorrowLine = () => `Come back tomorrow for case #${pad(today.no + 1)}.`;
   function loadCase(c) {
     today = c; CASE = c.rounds;
@@ -795,7 +837,7 @@
   }
 
   // ---------- Game state ----------
-  const steps = { title: $("s-title"), round: $("s-round"), end: $("s-end") };
+  const steps = { title: $("s-title"), round: $("s-round"), end: $("s-end"), stats: $("s-stats") };
   const show = (name) => { for (const k in steps) steps[k].hidden = k !== name; };
   let ri = 0, locked = false, results = [], timer = null, endsAt = 0;
 
@@ -1106,7 +1148,7 @@
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w, R) : 0, m = multNow(), pts = base * m;
     // What real people guessed, when a published survey asked it.
     if (!practicing) {
-      results.push({ lo, hi, pts, base, inside });
+      results.push({ lo, hi, pts, base, inside, t: R.truth, s: span(R), cat: R.cat || "" });
       if (!preview) store.set(progKey(today.no), { results, open: -1 });
       const runTotal = results.reduce((t, x) => t + x.pts, 0);
       setTimeout(() => climbTo(runTotal / 1000), 650);
@@ -1215,6 +1257,87 @@
   }
   $("hop").addEventListener("click", () => window.Launch && window.Launch.skip());
 
+  // ---------- My Close Enough: stats from your saved days (works signed out too) ----------
+  const TOPIC = { animals: "animals", body: "the human body", energy: "energy", food: "food", habits: "everyday habits", health: "health",
+    history: "history", home: "home life", life: "daily life", money: "money", ocean: "the ocean", out: "life out and about", people: "population",
+    planet: "the planet", progress: "world progress", space: "space", tech: "tech", transport: "getting around" };
+  function localEntries() {
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i); const m = /^fifty-played-(\d+)$/.exec(k || "");
+        if (!m) continue;
+        const e = store.get(k); if (e && typeof e.total === "number") out.push({ no: Number(m[1]), ...e });
+      }
+    } catch (e) {}
+    return out.sort((a, b) => a.no - b.no);
+  }
+  function streaks(nos) {
+    const set = new Set(nos); let best = 0, run = 0, prev = null;
+    for (const n of [...set].sort((a, b) => a - b)) { run = prev !== null && n === prev + 1 ? run + 1 : 1; best = Math.max(best, run); prev = n; }
+    let cur = 0, n = set.has(today.no) ? today.no : today.no - 1;
+    while (set.has(n)) { cur++; n--; }
+    return { cur, best };
+  }
+  const squareColor = (x) => { const b = x.base ?? x.pts; return !x.inside ? "var(--ink)" : b >= 100 ? "var(--gold)" : b >= 60 ? "#FFA300" : b >= 25 ? "var(--a)" : "var(--paper)"; };
+  const shortDate = (d) => { try { return new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }); } catch (e) { return d; } };
+  function renderStats() {
+    const es = localEntries(), rounds = es.flatMap((e) => e.results || []);
+    const { cur, best } = streaks(es.map((e) => e.no));
+    const avg = es.length ? Math.round(es.reduce((t, e) => t + e.total, 0) / es.length) : 0;
+    const top = es.length ? Math.max(...es.map((e) => e.total)) : 0;
+    const caught = rounds.length ? Math.round(100 * rounds.filter((x) => x.inside).length / rounds.length) : 0;
+    const tile = (v, l) => `<div class="tile"><b>${v}</b><span>${l}</span></div>`;
+    $("tiles").innerHTML = tile(es.length, "Days played") + tile(cur, "Streak") + tile(best, "Best streak") +
+      tile(num(avg), "Average") + tile(num(top), "Best day") + tile(caught + "%", "Caught");
+    // What your answers say about you (only once there's enough to say something real).
+    const ins = [];
+    const real = rounds.filter((x) => x.t !== undefined && x.s && !x.skipped);
+    if (real.length >= 5) {
+      const bias = real.reduce((t, x) => t + ((x.lo + x.hi) / 2 - x.t) / x.s * 100, 0) / real.length;
+      ins.push(Math.abs(bias) < 3 ? ["Your guesses are well centered.", "On average you land close to the real number."]
+        : [`You tend to guess ${bias < 0 ? "low" : "high"}.`, `By about ${Math.round(Math.abs(bias))}% of the scale, on average. The real numbers are usually ${bias < 0 ? "bigger" : "smaller"} than you think.`]);
+      const half = real.reduce((t, x) => t + (x.hi - x.lo) / 2 / x.s * 100, 0) / real.length;
+      ins.push(half > 20 ? ["You play it safe.", "Your windows are wide. Tighten up when you're fairly sure."] : half < 8 ? ["You live dangerously.", "Tight windows every time. Big points when you're right."] : ["You size your windows well.", "A good mix of safe and bold."]);
+      const by = {};
+      for (const x of real) if (x.cat) { (by[x.cat] = by[x.cat] || [0, 0])[0] += x.inside ? 1 : 0; by[x.cat][1]++; }
+      const cats = Object.entries(by).filter(([, v]) => v[1] >= 3).map(([k, v]) => [k, v[0] / v[1]]).sort((a, b) => b[1] - a[1]);
+      if (cats.length >= 2) ins.push([`Best topic: ${TOPIC[cats[0][0]] || cats[0][0]}.`, `Toughest: ${TOPIC[cats[cats.length - 1][0]] || cats[cats.length - 1][0]}.`]);
+    }
+    if (top > 0 && window.Launch) ins.push([`Farthest flight: ${window.Launch.stopFor(top).toLowerCase()}.`, `Your best day, ${num(top)} points.`]);
+    if (!ins.length) ins.push(["Play a few days to see what your guesses say about you.", "Calibration, best topics and more show up here."]);
+    $("insights").innerHTML = ins.map(([a, b]) => `<div class="insight">${a}<small>${b}</small></div>`).join("");
+    $("hist").innerHTML = es.length ? [...es].reverse().map((e) =>
+      `<div class="hrow"><div class="ht">${e.theme ? e.theme.replace(/[<>&]/g, "") : "Case #" + pad(e.no)}<small>#${pad(e.no)}${e.date ? " · " + shortDate(e.date) : ""}</small>` +
+      `<div class="sq">${(e.results || []).map((x) => `<i style="background:${squareColor(x)}"></i>`).join("")}</div></div><div class="hs">${num(e.total)}</div></div>`).join("")
+      : '<p class="hist-empty">No days yet. Today\'s case is waiting.</p>';
+  }
+  let statsFrom = "title";
+  function openStats(from) { statsFrom = from; window.Launch && window.Launch.stop && window.Launch.stop(); renderStats(); show("stats"); scrollTo(0, 0); }
+  $("to-stats-t").addEventListener("click", () => openStats("title"));
+  $("to-stats-e").addEventListener("click", () => openStats("end"));
+  $("stats-back").addEventListener("click", () => { if (statsFrom === "end") { show("end"); } else { loadCase(today); show("title"); } });
+
+  // The bridge for assets/account.js (optional Google sign-in). If it never loads, nothing here breaks.
+  let acctUser = null;
+  window.CE = {
+    preview,
+    localEntries,
+    // From your account: fill in days this device doesn't have yet (a day you played elsewhere counts here too).
+    saveEntry(no, e) { if (!store.get(playedKey(no)) && e && typeof e.total === "number") store.set(playedKey(no), { no, date: e.date, theme: e.theme, total: e.total, results: e.results || [] }); },
+    setUser(u) {
+      acctUser = u;
+      $("signin").hidden = !!u; $("acct-foot").hidden = !u;
+      $("acct-t").textContent = u ? `Signed in as ${u.name}. Your days are saved to your account.` : "Sign in to save your streak and history to your account, so they follow you to any device.";
+      $("to-stats-sub").textContent = u ? "SAVED TO YOUR ACCOUNT" : "SAVE YOUR STREAK WITH GOOGLE";
+    },
+    setSync(t) { $("acct-sync").textContent = t || ""; },
+    refresh() { if (!steps.stats.hidden) renderStats(); else if (!steps.title.hidden) loadCase(today); },
+    ready() { if (!acctUser) $("signin").hidden = false; },
+  };
+  $("signin").addEventListener("click", () => window.CE.signIn && window.CE.signIn());
+  $("signout").addEventListener("click", () => window.CE.signOut && window.CE.signOut());
+
   // ---------- End: the mirror ----------
   function finish(again = false) {
     if (!again && document.body.classList.contains("climbing")) { blastOff(() => finish.real(again)); return; }
@@ -1272,7 +1395,11 @@
     // The share: one pixel square per round (the same colors as the answer cards), the score, where you got to.
     const square = (x) => { const b = x.base ?? x.pts; return !x.inside ? "⬛" : b >= 100 ? "🟨" : b >= 60 ? "🟧" : b >= 25 ? "🟦" : "⬜"; };
     const grid = results.map(square).join("");
-    if (!again && !preview) { store.set(playedKey(today.no), { total, results }); bumpStreak(today.no); }
+    if (!again && !preview) {
+      const entry = { no: today.no, date: today.date, theme: today.theme, total, results };
+      store.set(playedKey(today.no), entry); bumpStreak(today.no);
+      document.dispatchEvent(new CustomEvent("ce:played", { detail: entry }));
+    }
     const WHERE = { sats: "low orbit", rocks: "the asteroid belt", moon: "the Moon", mars: "Mars", comet: "a comet", giant: "the gas giant",
       ufo: "the aliens", nebula: "a nebula", nova: "a supernova", hole: "a black hole", whale: "the edge of the universe" };
     let reached = "";
@@ -2136,3 +2263,4 @@
 })();
 
 </script>
+<script type="module" src="assets/account.js"></script>
