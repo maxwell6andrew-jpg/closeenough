@@ -321,6 +321,17 @@
   body.tutorial #s-round { gap: 10px; }
   body.tutorial { padding-top: 76px; }
   .screen.thud { animation: thud 160ms steps(3); }
+  /* sparks off the answer line on a hit (scale-only start, so nothing depends on a fade finishing) */
+  .spark { position: fixed; z-index: 30; width: 8px; height: 8px; margin: -4px 0 0 -4px; pointer-events: none; box-shadow: 0 0 0 2px var(--ink);
+    animation: spark 700ms steps(6) both; }
+  @keyframes spark { from { transform: translate(0, 0) scale(.4); } 70% { opacity: 1; } to { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 0; } }
+  /* a chip squishes when you tap it */
+  .chip.press { animation: press 200ms steps(3); }
+  @keyframes press { 40% { transform: scale(.9); } }
+  /* the logo does a little flip */
+  #logo.flip { animation: flip 420ms steps(6); }
+  @keyframes flip { 50% { transform: scaleX(-1) translateY(-4px); } }
+  #logo { cursor: pointer; }
   @keyframes thud { 33% { transform: translate(1px, 2px); } 66% { transform: translate(-1px, -1px); } }
   .foot { text-align: center; margin: 28px 0 0; } .foot a { font-family: var(--label); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--muted); }
   .note { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
@@ -648,6 +659,9 @@
   }
   // Buttons get a tap too.
   document.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) haptic(); }, { passive: true });
+  // Little sounds for the buttons that didn't have one.
+  const BTN_SFX = { next: "whoosh", copy: "bloop", again: "back", "stats-back": "back", "to-stats-t": "blip", "to-stats-e": "blip", howto: "blip", signin: "blip", signout: "back" };
+  document.addEventListener("click", (e) => { const b = e.target.closest("button"); const k = b && BTN_SFX[b.id]; if (k) sfx[k](); });
 
   // ---------- Sound ----------
   let ac = null, soundOn = true;
@@ -671,6 +685,19 @@
     lock: () => { tone(220, 0.06); tone(330, 0.08, 0.06); },
     hit: (p) => { const n = p >= 80 ? 5 : p >= 40 ? 4 : 3; [523, 659, 784, 1047, 1319].slice(0, n).forEach((f, i) => tone(f, 0.1, 0.25 + i * 0.08)); },
     miss: () => { tone(196, 0.18, 0.25, "square", 0.05); tone(147, 0.3, 0.45, "square", 0.05); },
+    // Locking in: a tight window rings high and bright, a wide one low and soft.
+    commit: (k) => { const b = 880 - k * 420; tone(b, 0.05, 0, "square", 0.04); tone(b * 1.5, 0.08, 0.05, "square", 0.035); },
+    blip: () => tone(1046, 0.03, 0, "square", 0.025),                                       // small buttons
+    whoosh: () => [330, 440, 587, 784].forEach((f, i) => tone(f, 0.04, i * 0.03, "triangle", 0.04)),   // next / continue
+    bloop: () => { tone(523, 0.05, 0, "sine", 0.06); tone(784, 0.09, 0.05, "sine", 0.06); },         // copy / share
+    back: () => { tone(660, 0.04, 0, "square", 0.025); tone(440, 0.06, 0.04, "square", 0.025); },
+    sparkle: () => [1568, 2093, 2637].forEach((f, i) => tone(f, 0.05, 0.3 + i * 0.05, "triangle", 0.03)),
+    // the sky
+    beep: () => { tone(1760, 0.04, 0, "square", 0.03); tone(1319, 0.05, 0.07, "square", 0.03); tone(1760, 0.04, 0.14, "square", 0.03); },
+    wheee: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.05, i * 0.035, "sine", 0.05)),
+    crunch: () => [140, 110, 90].forEach((f, i) => tone(f, 0.06, i * 0.05, "sawtooth", 0.05)),
+    fanfare: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.09, i * 0.09, "square", 0.04)),
+    flip: () => { tone(988, 0.03, 0, "square", 0.03); tone(1319, 0.05, 0.04, "square", 0.03); },
   };
   $("sound").addEventListener("click", () => {
     soundOn = !soundOn; $("sound").textContent = soundOn ? "SND ON" : "SND OFF"; $("sound").setAttribute("aria-pressed", soundOn);
@@ -755,15 +782,41 @@
   // Coming back to the page (tab switch, app switch, or the back button): start with a clean sky.
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { resetSky(performance.now()); lastStar = 0; } });
   addEventListener("pageshow", (e) => { if (e.persisted) { resetSky(performance.now()); lastStar = 0; } });
+  // Tap something drifting by (in the open sky, not on the game panel).
+  function tapSky(e) {
+    if (reduce || e.target.closest("button, input, a, .px, .hop, .tut-banner, .climb, header")) return;
+    const sx = e.clientX / 4, sy = e.clientY / 4, now = performance.now();
+    for (let i = flyers.length - 1; i >= 0; i--) {
+      const f = flyers[i], [rows] = FLY[f.k];
+      if (f.hit || sx < f.x - 4 || sx > f.x + rows[0].length + 4 || sy < f.y - 4 || sy > f.y + rows.length + 4) continue;
+      f.hit = now; haptic();
+      if (f.k === "sat") { sfx.beep(); f.blink = now; f.hit = 0; f.vx *= 1.6; }
+      else if (f.k === "ufo") { sfx.wheee(); f.vx *= 7; f.vy = -18; }
+      else if (f.k === "rock" || f.k === "rock2") {
+        sfx.crunch(); flyers.splice(i, 1);
+        for (let k = 0; k < 4; k++) flyers.push({ k: "bit", x: f.x + 1, y: f.y + 1, vx: f.vx * 0.4 + (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, born: now, wob: 0 });
+      }
+      else if (f.k === "drafty") { sfx.fanfare(); f.hop = now; f.hit = 0; }
+      return;
+    }
+  }
+  document.addEventListener("pointerdown", tapSky, { passive: true });
+  // The logo does a little flip when you tap it.
+  $("logo").addEventListener("click", () => { const l = $("logo"); l.classList.remove("flip"); void l.offsetWidth; l.classList.add("flip"); sfx.flip(); haptic(); });
+  FLY.bit = [["b"], { b: "#AB5236" }];
   function paintFlyers(now, dt) {
     for (let i = flyers.length - 1; i >= 0; i--) {
       const f = flyers[i];
       f.x += f.vx * dt;
+      if (f.vy) f.y += f.vy * dt;
+      if (f.k === "bit" && now - f.born > 1400) { flyers.splice(i, 1); continue; }
+      if (f.blink && now - f.blink < 900 && Math.floor((now - f.blink) / 110) % 2) continue;   // a happy blink
+      if (f.hop && now - f.hop < 900) f.y -= Math.sin((now - f.hop) / 900 * Math.PI) * 0.35;
       const [rows, pal] = FLY[f.k];
       const y = Math.round(f.y + (f.k === "ufo" ? Math.sin(now / 300 + f.wob) * 2 : f.k === "drafty" ? Math.sin(now / 500) * 1.5 : 0));
       rows.forEach((r, j) => [...r].forEach((ch, c) => { if (pal[ch]) { sctx.fillStyle = pal[ch]; sctx.fillRect(Math.round(f.x) + c, y + j, 1, 1); } }));
       if (f.k === "ufo" && Math.floor(now / 200) % 2) { sctx.fillStyle = "rgba(124,227,161,.35)"; sctx.fillRect(Math.round(f.x) + 2, y + 4, 3, 3); }
-      if (f.x < -20 || f.x > sc.width + 20) flyers.splice(i, 1);
+      if (f.x < -20 || f.x > sc.width + 20 || f.y < -20 || f.y > sc.height + 20) flyers.splice(i, 1);
     }
   }
   let lastStar = 0;
@@ -963,7 +1016,10 @@
   $("chips").addEventListener("click", (e) => {
     const b = e.target.closest(".chip"); if (!b || locked) return;
     if (practicing && tut < 1) { nudgeTut(); return; }
-    setG(Number(b.dataset.g)); lockIn();
+    const idx = chipVals.indexOf(Number(b.dataset.g));
+    b.classList.remove("press"); void b.offsetWidth; b.classList.add("press");
+    sfx.commit(chipVals.length > 1 ? idx / (chipVals.length - 1) : 0);
+    setG(Number(b.dataset.g)); lockIn(e);
   });
   $("chips").addEventListener("pointerover", (e) => { const b = e.target.closest(".chip"); if (b && !locked) { hoverG = Number(b.dataset.g); render(); } });
   $("chips").addEventListener("pointerleave", () => { if (!locked) { hoverG = null; render(); } });
@@ -1142,7 +1198,7 @@
     setTut(TUT.length);
     // Take whatever is typed in a number box when time runs out.
     if (document.activeElement === cin) cin.blur();
-    locked = true; clearInterval(timer); stopHold(); sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
+    locked = true; clearInterval(timer); stopHold(); if (!e) sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
     cin.disabled = true; $("minus").disabled = $("plus").disabled = true;
     const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w, R) : 0, m = multNow(), pts = base * m;
@@ -1176,7 +1232,20 @@
     countUp($("pts"), pts);
     document.querySelector(".screen").scrollIntoView({ block: "start" });
     inside ? sfx.hit(base) : sfx.miss();
+    if (inside && !reduce) sparkleAt($("truth"), base >= 100 ? 14 : base >= 60 ? 10 : 6);
     $("next").focus({ preventScroll: true });
+  }
+  function sparkleAt(el, n) {
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    sfx.sparkle();
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement("i"), a = (i / n) * Math.PI * 2 + Math.random() * 0.5, d = 40 + Math.random() * 46;
+      p.className = "spark"; p.style.left = cx + "px"; p.style.top = cy + "px";
+      p.style.setProperty("--dx", Math.round(Math.cos(a) * d / 4) * 4 + "px"); p.style.setProperty("--dy", Math.round(Math.sin(a) * d / 4) * 4 + "px");
+      p.style.background = ["var(--gold)", "var(--paper)", "var(--a)"][i % 3];
+      p.style.animationDelay = 280 + Math.random() * 120 + "ms";
+      document.body.appendChild(p); setTimeout(() => p.remove(), 1300);
+    }
   }
   function countUp(el, to, commas) {
     const show = (v) => commas ? v.toLocaleString("en-US") : v;
