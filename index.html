@@ -233,6 +233,16 @@
   .nudge { animation: spot 900ms steps(2) infinite, nudge 300ms steps(4); }
   @keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
   #lock.wait { opacity: 0.35; }
+  .tut-banner { position: fixed; z-index: 20; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px;
+    background: var(--gold); color: var(--ink); text-align: center; box-shadow: 0 var(--u) 0 var(--ink); display: grid; gap: 2px;
+    animation: slideDown 260ms steps(4); }
+  .tut-banner b { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 0.9; letter-spacing: 0.04em; }
+  .tut-banner span { font-family: var(--label); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+  @keyframes slideDown { from { transform: translateY(-100%); } }
+  body.tutorial .screen { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 78px); }
+  body.tutorial .coach { padding: 8px 12px; font-size: 13px; }
+  body.tutorial #s-round { gap: 10px; }
+  body.tutorial { padding-top: 76px; }
   .screen.thud { animation: thud 160ms steps(3); }
   @keyframes thud { 33% { transform: translate(1px, 2px); } 66% { transform: translate(-1px, -1px); } }
   #lock.armed { animation: spot 600ms steps(2) infinite; outline: var(--u) solid var(--paper); outline-offset: 4px; }
@@ -329,6 +339,7 @@
 
 <canvas id="stars" aria-hidden="true"></canvas>
 <div class="climb" id="climb" aria-hidden="true"></div>
+<div class="tut-banner" id="tut-banner" role="status" hidden><b>TUTORIAL MODE</b><span id="tut-sub">Tap the flashing yellow box</span></div>
 
 <div class="wrap">
   <header class="bar">
@@ -471,21 +482,32 @@
     why: "8 out of 24 hours is a third. By 75, that's about 25 years asleep.", src: "Simple math" };
   // Hands-on tutorial: one move at a time, highlighted, and it only moves on once you've done it.
   const TUT = [
-    { el: "track", text: "<b>STEP 1 OF 4 · MAKE YOUR GUESS</b>Swipe or tap the bar to pick a number. Try it now." },
-    { el: "guess", text: "<b>STEP 2 OF 4 · FINE-TUNE IT</b>Nice. Now tap <b class='k'>−</b> or <b class='k'>+</b> to nudge it by one. You can also tap the big number and type it." },
-    { el: "sure", text: "<b>STEP 3 OF 4 · HOW SURE ARE YOU?</b>Pick a window. Tighter pays more, but only if the answer lands inside. Try <b class='k'>±5</b>." },
-    { el: "lock", text: "<b>STEP 4 OF 4 · LOCK IT IN</b>\"Worth\" shows what you'll score if you're right. Happy with it? Tap <b class='k'>LOCK IT IN</b>." },
+    { sub: "Tap or swipe the flashing yellow box", el: "track", text: "<b>STEP 1 OF 4 · MAKE YOUR GUESS</b>Swipe or tap the bar to pick a number." },
+    { sub: "Tap − or + inside the yellow box", el: "guess", text: "<b>STEP 2 OF 4 · FINE-TUNE IT</b>Tap <b class='k'>−</b> or <b class='k'>+</b> to nudge it. You can also type it." },
+    { sub: "Tap a button in the yellow box", el: "sure", text: "<b>STEP 3 OF 4 · HOW SURE ARE YOU?</b>Tighter windows pay more, but only if you're right. Try <b class='k'>±5</b>." },
+    { sub: "Tap the yellow box to lock it in", el: "lock", text: "<b>STEP 4 OF 4 · LOCK IT IN</b>\"Worth\" is what you'll score if you're right." },
   ];
-  const COACH_DONE = "<b>THAT'S THE GAME</b>The gold line is the real answer. Inside your window, you score. The tighter your window, the bigger the score. Miss it and you get 0. In the real game you get 20 seconds a round.";
+  const COACH_DONE = "<b>THAT'S THE GAME</b>The gold line is the answer. Inside your window scores, and tighter scores more. Real rounds have a 20-second clock.";
   let tut = 0;
   function setTut(n) {
     tut = n;
     document.querySelectorAll(".spot").forEach((e) => e.classList.remove("spot"));
     if (!practicing || n >= TUT.length) { $("lock").classList.remove("wait"); return; }
+    tutBanner(TUT[n].sub);
     $("coach").innerHTML = TUT[n].text;
     $(TUT[n].el).classList.add("spot");
     $("lock").classList.toggle("wait", n < 3);
     if (n > 0) { tone(660, 0.05); tone(990, 0.07, 0.06); }
+    else { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.09, i * 0.09)); }   // tutorial intro jingle
+  }
+  function tutBanner(sub) {
+    const on = !!sub;
+    $("tut-banner").hidden = !on;
+    document.body.classList.toggle("tutorial", on);
+    if (on) {
+      const el = $("tut-sub"); el.textContent = sub;
+      el.style.animation = "none"; void el.offsetWidth; el.style.animation = "pop 260ms cubic-bezier(.2, 1.6, .4, 1)";
+    }
   }
   const tutDid = (step) => { if (practicing && tut === step) setTimeout(() => setTut(step + 1), step === 0 ? 450 : 250); };
   let practicing = false;
@@ -929,6 +951,7 @@
     $("timer-row").hidden = practicing;
     $("coach").hidden = !practicing;
     setTut(0);
+    if (!practicing) tutBanner(null);
     if (!practicing && ri === 0) { RAIL.cur = RAIL.target = 0; buildClimb(); if ($("climb").dataset.built) placeRocket(0); }
     showClimb(!practicing);
     $("reach").hidden = true;
@@ -976,7 +999,7 @@
     if (e && e.type === "click" && !(practicing && tut < 3)) disarmEnter();
     if (practicing && tut < 3 && e && e.type === "click") {
       const sp = document.querySelector(".spot"); if (sp) { sp.classList.remove("nudge"); void sp.offsetWidth; sp.classList.add("nudge"); }
-      tone(196, 0.08); return;
+      tone(196, 0.08); tone(147, 0.12, 0.08, "sawtooth", 0.03); return;
     }
     setTut(TUT.length);
     // Take whatever is typed in a number box when time runs out.
@@ -990,7 +1013,7 @@
       const runTotal = results.reduce((t, x) => t + x.pts, 0);
       setTimeout(() => climbTo(runTotal / 1000), 650);
     }
-    else $("coach").innerHTML = COACH_DONE;
+    else { $("coach").innerHTML = COACH_DONE; tutBanner("Nice! Tap the yellow button to start today's game"); $("next").classList.add("spot"); }
     for (const id of ["sure", "worth", "lock", "type-hint"]) $(id).hidden = true;
 
     // The truth drops onto the track.
@@ -1004,7 +1027,7 @@
     $("vs").textContent = `You said ${num(c)}${R.unit}${g ? `, give or take ${num(g)}` : ", exactly"}. The answer is ${num(R.truth)}${R.unit}.` + (m > 1 && inside ? ` ${base} × ${m} = ${num(pts)}.` : "");
     $("pts").classList.toggle("zero", !inside);
     $("why-t").textContent = R.why; $("why-s").textContent = "Source: " + R.src;
-    $("verdict").hidden = false; $("why").hidden = false; $("next").hidden = false;
+    $("verdict").hidden = false; $("why").hidden = practicing; $("next").hidden = false;
     $("next").textContent = practicing ? "START TODAY'S CASE" : ri === CASE.length - 1 ? "SEE YOUR CASE" : "NEXT ROUND";
     countUp($("pts"), pts);
     document.querySelector(".screen").scrollIntoView({ block: "start" });
@@ -1027,7 +1050,7 @@
   $("howto").addEventListener("click", () => begin(true));
   $("lock").addEventListener("click", lockIn);
   $("next").addEventListener("click", () => {
-    if (practicing) { practicing = false; markTutorial(); ri = 0; results = []; sfx.start(); startRound(); return; }
+    if (practicing) { practicing = false; markTutorial(); tutBanner(null); $("next").classList.remove("spot"); ri = 0; results = []; sfx.start(); startRound(); return; }
     if (ri < CASE.length - 1) { ri++; startRound(); } else finish();
   });
   $("again").addEventListener("click", () => { window.Launch && window.Launch.stop(); loadCase(today); show("title"); });
