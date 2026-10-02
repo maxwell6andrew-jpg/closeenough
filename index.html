@@ -570,11 +570,13 @@
   const span = (r) => r.max - r.min;
   const normWidth = (r, lo, hi) => (hi - lo) * 100 / span(r);
   // Base points per round, 0-100. w is the full window as a % of the scale.
-  // EXACT 100 · ±1 96 · ±2 91 · ±5 79 · ±10 61 · ±20 33 · ±30 13 · ±40 3 · miss 0
-  function pointsFor(w) {
-    if (w <= 0) return 100;
-    const half = w / 2;
-    return Math.max(1, Math.round(100 * Math.pow(Math.max(0, 1 - half / 50), 2.2)));
+  // Nobody hits it on the nose, so anything within ±3% of the scale is a full 100.
+  // On a 0-100 scale: ±3 100 · ±5 91 · ±10 70 · ±15 52 · ±20 37 · ±25 25 · ±30 15 · ±40 3 · miss 0.
+  // On tiny scales (0-12 hours) the tightest window is ±1, so that counts as full points instead.
+  function pointsFor(w, R) {
+    const half = w / 2, full = Math.max(3, R ? 100 / span(R) : 0);
+    if (half <= full + 1e-9) return 100;
+    return Math.max(1, Math.round(100 * Math.pow(Math.max(0, (50 - half) / (50 - full)), 2.2)));
   }
   // Later rounds are worth more. A perfect day is 100 + 100 + 200 + 200 + 400 = 1,000.
   const MULT = [1, 1, 2, 2, 4];
@@ -815,11 +817,12 @@
   const num = (n) => Math.abs(n) >= 1000 ? n.toLocaleString("en-US") : String(n);
   const short = (n) => n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + "K" : String(n);
   const stepFor = (R) => span(R) >= 1000 ? nice(span(R) / 200) : 1;
+  // How sure are you: from ±3% of the scale (full points) out to ±40%.
   function chipsFor(R) {
-    const out = [0];
-    for (const k of [1, 2, 5, 10, 20, 30, 40]) {
+    const out = [];
+    for (const k of [3, 5, 10, 15, 20, 25, 30, 40]) {
       const t = k * span(R) / 100;
-      const v = nice(t);
+      const v = t < 10 ? Math.max(1, Math.round(t)) : nice(t);   // small scales get every whole step
       if (!out.includes(v)) out.push(v);
     }
     return out;
@@ -828,7 +831,7 @@
     const R = r();
     chipVals = chipsFor(R);
     $("chips").innerHTML = chipVals.map((v) =>
-      `<button class="chip" data-g="${v}">${v === 0 ? "EXACT" : "±" + short(v)}<small>${num(pointsFor(normWidth(R, 0, 2 * v)) * multNow())} PTS</small></button>`).join("");
+      `<button class="chip" data-g="${v}">±${short(v)}<small>${num(pointsFor(normWidth(R, 0, 2 * v), R) * multNow())} PTS</small></button>`).join("");
     $("chips").style.gridTemplateColumns = `repeat(${Math.min(4, chipVals.length)}, 1fr)`;
   }
   function render() {
@@ -1100,7 +1103,7 @@
     locked = true; clearInterval(timer); stopHold(); sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
     cin.disabled = true; $("minus").disabled = $("plus").disabled = true;
     const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
-    const w = normWidth(R, lo, hi), base = inside ? pointsFor(w) : 0, m = multNow(), pts = base * m;
+    const w = normWidth(R, lo, hi), base = inside ? pointsFor(w, R) : 0, m = multNow(), pts = base * m;
     // What real people guessed, when a published survey asked it.
     $("ppl-line").hidden = !(R.ppl && !practicing);
     if (R.ppl && !practicing) $("ppl-line").innerHTML = `People said <b>${num(R.ppl.guess)}${R.unit}</b>`;
