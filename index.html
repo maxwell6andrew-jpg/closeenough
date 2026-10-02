@@ -51,12 +51,12 @@
   button:focus-visible, [tabindex]:focus-visible { outline: var(--u) solid var(--gold); outline-offset: var(--u); }
 
   .meta { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .meta span b { color: var(--paper); font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: 1px; display: block; line-height: 1; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .meta span b { color: var(--paper); font-family: var(--body); font-weight: 700; font-size: 17px; letter-spacing: 0; text-transform: none; display: block; line-height: 1.1; margin-top: 5px; font-variant-numeric: tabular-nums; }
 
   .screen { padding: 24px 20px; display: grid; gap: 20px; min-height: 560px; align-content: start; }
   .step { display: grid; gap: 18px; }
   .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-  .h-case { font-family: var(--display); font-weight: 400; font-size: 54px; line-height: 0.92; margin: 0; text-wrap: balance; }
+  .h-case { font-family: var(--body); font-weight: 800; font-size: 38px; line-height: 1.05; letter-spacing: -0.025em; margin: 0; text-wrap: balance; }
   .question { font-family: var(--body); font-weight: 700; font-size: 26px; line-height: 1.2; letter-spacing: -0.015em; margin: 0; text-wrap: balance; min-height: 2.4em; }
   .demo-tag { font-family: var(--label); font-size: 10px; letter-spacing: 1px; color: var(--ink); background: var(--muted); padding: 2px 6px; }
 
@@ -166,7 +166,7 @@
   .verdict { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; align-items: center; padding: 16px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); }
   .pts { font-family: var(--display); font-size: 72px; line-height: 0.8; color: var(--gold); grid-row: span 2; min-width: 2.2ch; font-variant-numeric: tabular-nums; }
   .pts.zero { color: var(--b); }
-  .vt { font-family: var(--display); font-size: 30px; line-height: 0.95; }
+  .vt { font-family: var(--body); font-weight: 800; font-size: 21px; line-height: 1.15; letter-spacing: -0.01em; }
   .vs { font-size: 14px; color: var(--muted); }
   .why { border-left: var(--u) solid var(--gold); padding-left: 14px; display: grid; gap: 6px; }
   .why p { margin: 0; }
@@ -176,7 +176,7 @@
   .total { text-align: center; display: grid; gap: 4px; }
   .total b { font-family: var(--display); font-weight: 400; font-size: 120px; line-height: 0.8; color: var(--gold); font-variant-numeric: tabular-nums; }
   .mirror { padding: 18px; background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); display: grid; gap: 6px; }
-  .mirror .vt { color: var(--gold); font-size: 40px; }
+  .mirror .vt { color: var(--gold); font-size: 26px; }
   .recap { display: grid; gap: 10px; }
   .rc { display: grid; grid-template-columns: 1fr 44px; gap: 10px; align-items: center; }
   .rc .mini { position: relative; height: 10px; background: var(--ink); }
@@ -210,7 +210,7 @@
   footer { margin-top: 56px; text-align: center; }
 
   @media (max-width: 420px) {
-    .h-case { font-size: 44px; } .question { font-size: 23px; } .guess-num .num { font-size: 76px; } .guess { grid-template-columns: 48px 1fr 48px; }
+    .h-case { font-size: 32px; } .question { font-size: 23px; } .guess-num .num { font-size: 76px; } .guess { grid-template-columns: 48px 1fr 48px; }
     .screen { padding: 20px 14px; } .chip { font-size: 28px; }
     .total b { font-size: 96px; } .manual-head h2 { font-size: 46px; }
   }
