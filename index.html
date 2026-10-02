@@ -1120,7 +1120,8 @@
     }
     else {
       $("coach").innerHTML = COACH_DONE; tutBanner("Nice! Tap the yellow button to start today's game"); $("next").classList.add("spot");
-      showBlip(inside ? "You got it! The gold line is the answer. Inside your window, you score. Tap START TODAY'S CASE." : "So close! The gold line is the answer. Land inside your window to score. Tap START TODAY'S CASE.", $("next"));
+      const goLbl = played(today.no) ? "SEE YOUR RESULT" : "START TODAY'S CASE";
+      showBlip(inside ? "You got it! The gold line is the answer. Inside your window, you score. Tap " + goLbl + "." : "So close! The gold line is the answer. Land inside your window to score. Tap " + goLbl + ".", $("next"));
     }
     for (const id of ["sure", "worth", "lock", "type-hint"]) $(id).hidden = true;
 
@@ -1136,7 +1137,7 @@
     $("pts").classList.toggle("zero", !inside);
     $("why-t").textContent = R.why; $("why-s").textContent = "Source: " + R.src;
     $("verdict").hidden = false; $("why").hidden = practicing; $("next").hidden = false;
-    $("next").textContent = practicing ? "START TODAY'S CASE" : ri === CASE.length - 1 ? "SEE YOUR CASE" : "NEXT ROUND";
+    $("next").textContent = practicing ? (played(today.no) ? "SEE YOUR RESULT" : "START TODAY'S CASE") : ri === CASE.length - 1 ? "SEE YOUR CASE" : "NEXT ROUND";
     countUp($("pts"), pts);
     document.querySelector(".screen").scrollIntoView({ block: "start" });
     inside ? sfx.hit(base) : sfx.miss();
@@ -1174,7 +1175,13 @@
   $("howto").addEventListener("click", () => begin(true));
   $("lock").addEventListener("click", lockIn);
   $("next").addEventListener("click", () => {
-    if (practicing) { practicing = false; markTutorial(); tutBanner(null); hideBlip(); $("next").classList.remove("spot"); ri = 0; results = []; sfx.start(); startRound(); return; }
+    if (practicing) {
+      // Same gate as START: one play per day, and pick up a game in progress.
+      practicing = false; markTutorial(); tutBanner(null); hideBlip(); $("next").classList.remove("spot");
+      const done = played(today.no);
+      if (done) { results = done.results; finish(true); return; }
+      begin(false); return;
+    }
     if (ri < CASE.length - 1) {
       const x = results[ri], after = results.reduce((t, y) => t + y.pts, 0);
       $("next").hidden = true;
