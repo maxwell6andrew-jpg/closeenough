@@ -257,6 +257,14 @@
   .rc { background: var(--deep); box-shadow: 0 0 0 var(--u) var(--ink); padding: 12px 14px 12px; display: grid; gap: 7px; }
   .rc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
   .rc-tag { font-family: var(--display); font-size: 22px; line-height: 1; color: var(--paper); letter-spacing: .02em; }
+  /* a small pixel marker before each reaction, colored by how it went */
+  .rc-tag { display: inline-flex; align-items: center; gap: 8px; }
+  .rc-tag::before { content: ""; width: 10px; height: 10px; flex: none; background: currentColor; box-shadow: 0 0 0 2px var(--ink); }
+  .rc-tag.top { color: var(--gold); }
+  .rc-tag.great { color: #FFA300; }
+  .rc-tag.good { color: var(--a); }
+  .rc-tag.safe { color: var(--paper); }
+  .rc-tag.near { color: #FF77A8; }
   .rc-tag.miss { color: var(--b); }
   .rc .p { font-family: var(--display); font-size: 26px; line-height: 1; color: var(--gold); white-space: nowrap; }
   .rc .q { font-size: 14px; line-height: 1.35; color: var(--paper); }
@@ -376,7 +384,7 @@
 <div class="hop" id="hop" hidden>
   <div class="hop-top"><span class="lbl" id="hop-round"></span><b id="hop-pts"></b></div>
   <div class="hop-frame" id="hop-frame">
-    <div class="hop-err" id="hop-err" role="alert" hidden><div class="hop-err-bar">⚠ ERROR</div><b>ENGINE SPUTTERED</b><span>Wrong answer. No thrust this round.</span></div>
+    <div class="hop-err" id="hop-err" role="alert" hidden><div class="hop-err-bar">ERROR</div><b>ENGINE SPUTTERED</b><span>Wrong answer. No thrust this round.</span></div>
   </div>
   <p class="lbl hop-hint">Tap to continue</p>
 </div>
@@ -739,7 +747,7 @@
     $("start").innerHTML = done ? `SEE YOUR RESULT<small>YOU SCORED ${done.total} · BACK TOMORROW</small>`
       : inProg && Array.isArray(inProg.results) && (inProg.results.length || inProg.open === 0) ? `CONTINUE<small>ROUND ${Math.min(5, inProg.results.length + (inProg.open === inProg.results.length ? 2 : 1))} OF 5</small>` : "START<small>5 ROUNDS · UP TO 1,000 POINTS</small>";
     const sk = streakNow();
-    $("streak").textContent = sk ? `🔥 ${sk}-day streak` : "";
+    $("streak").textContent = sk ? `${sk}-day streak` : "";
     if (preview) [...$("preview-row").children].forEach((b) => b.classList.toggle("on", Number(b.dataset.no) === c.no));
   }
   // Owner preview (add #preview to the link): play any scheduled case before it goes live.
@@ -1049,7 +1057,7 @@
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w) : 0, m = multNow(), pts = base * m;
     // What real people guessed, when a published survey asked it.
     $("ppl-line").hidden = !(R.ppl && !practicing);
-    if (R.ppl && !practicing) $("ppl-line").innerHTML = `👥 People said <b>${num(R.ppl.guess)}${R.unit}</b>`;
+    if (R.ppl && !practicing) $("ppl-line").innerHTML = `People said <b>${num(R.ppl.guess)}${R.unit}</b>`;
     if (!practicing) {
       results.push({ lo, hi, pts, base, inside });
       if (!preview) store.set(progKey(today.no), { results, open: -1 });
@@ -1190,16 +1198,16 @@
     // A cute reaction for each round, your window vs. the answer, a fun note, and where the number comes from.
     const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
     const tagFor = (x, R) => {
-      if (x.skipped) return ["💤 SKIPPED", true];
-      if (!x.inside) return Math.max(x.lo - R.truth, R.truth - x.hi) <= span(R) * 0.08 ? ["💫 SO CLOSE!", true] : ["🙈 WHOOPS", true];
+      if (x.skipped) return ["SKIPPED", "miss"];
+      if (!x.inside) return Math.max(x.lo - R.truth, R.truth - x.hi) <= span(R) * 0.08 ? ["SO CLOSE!", "near"] : ["WHOOPS", "miss"];
       const b = x.base ?? x.pts;
-      return b >= 100 ? ["🎯 BULLSEYE!"] : b >= 60 ? ["🔥 NAILED IT"] : b >= 25 ? ["⭐ NICE ONE"] : ["✅ PLAYED IT SAFE"];
+      return b >= 100 ? ["BULLSEYE!", "top"] : b >= 60 ? ["NAILED IT", "great"] : b >= 25 ? ["NICE ONE", "good"] : ["PLAYED IT SAFE", "safe"];
     };
     $("recap").innerHTML = results.map((x, i) => {
       const R = CASE[i], p = (v) => Math.min(100, Math.max(0, ((v - R.min) / span(R)) * 100));
-      const [tag, miss] = tagFor(x, R);
+      const [tag, kind] = tagFor(x, R);
       const you = x.skipped ? "no answer" : x.lo === x.hi ? `${num(x.lo)}${R.unit}` : `${num(Math.max(R.min, x.lo))} to ${num(Math.min(R.max, x.hi))}${R.unit}`;
-      return `<div class="rc"><div class="rc-top"><span class="rc-tag${miss ? " miss" : ""}">${tag}</span><span class="p">+${num(x.pts)}</span></div>` +
+      return `<div class="rc"><div class="rc-top"><span class="rc-tag ${kind}">${tag}</span><span class="p">+${num(x.pts)}</span></div>` +
         `<div class="q">${esc(R.q)}</div>` +
         `<div class="vs">You said ${you} · Answer <b>${num(R.truth)}${R.unit}</b></div>` +
         `<div class="mini"><div class="f" style="left:${p(x.lo)}%;width:${x.skipped ? 0 : p(x.hi) - p(x.lo)}%"></div><div class="t" style="left:${p(R.truth)}%"></div></div>` +
