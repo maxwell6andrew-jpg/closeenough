@@ -1156,7 +1156,8 @@
   function blastOff(then) {
     const r = $("rocket");
     if (!r || reduce || !document.body.classList.contains("climbing")) { showClimb(false); then(); return; }
-    r.classList.add("blast"); tone(220, 0.1); tone(440, 0.15, 0.08);
+    r.classList.add("blast");
+    if (window.Launch && window.Launch.boost) { window.Launch.muted = !soundOn; window.Launch.boost(true); } else { tone(220, 0.1); tone(440, 0.15, 0.08); }
     setTimeout(() => { showClimb(false); r.classList.remove("blast"); then(); }, 750);
   }
 
@@ -2251,6 +2252,15 @@
       });
     },
     // A miss: the engine coughs and dies.
+    // The error box: a two-tone warning alarm, beep-boop-beep-boop.
+    alarm() { for (let i = 0; i < 4; i++) { tone(i % 2 ? 660 : 880, 0.14, 0.15 + i * 0.17, "square", 0.045); } },
+    // Liftoff between rounds: a deep rumble under a rising roar. Bigger = the end-of-game blast.
+    boost(big) {
+      const n = big ? 8 : 5;
+      for (let i = 0; i < n; i++) tone(48 + i * 7, 0.11, i * 0.07, "sawtooth", big ? 0.06 : 0.045);
+      hiss(0, big ? 1.1 : 0.7, 150, big ? 4200 : 3200, big ? 0.32 : 0.22, 0.9);
+      tone(big ? 330 : 440, 0.08, big ? 0.55 : 0.32, "triangle", 0.04); tone(big ? 660 : 880, 0.12, big ? 0.62 : 0.39, "triangle", 0.04);
+    },
     sputter() {
       for (let i = 0; i < 5; i++) { hiss(i * 0.17, 0.11, 320, 70, 0.32, 1); tone(92 - i * 9, 0.09, i * 0.17, "sawtooth", 0.07); }
       tone(196, 0.14, 0.95, "square", 0.05); tone(147, 0.32, 1.1, "square", 0.05);
@@ -2359,6 +2369,7 @@
   const stopFor = (s) => { const p = Math.max(0.06, s / 1000); const last = [...STOPS].reverse().find((x) => x.p <= p + 0.001); return last ? last.name : "LIFTOFF"; };
   window.Launch = {
     cut: cutSounds,
+    boost: (big) => sfx.boost(big),
     stops: STOPS.map(({ p, key, name }) => ({ p, key, name })),
     muted: false,
     stopFor,
@@ -2380,10 +2391,10 @@
       prog = pStart; whaleAt = 0; helloAt = 0;
       shown = new Set(STOPS.filter((st) => st.p <= pStart + 0.001).map((st) => st.key));
       $("final").classList.remove("on"); $("callout").classList.remove("on");
-      if (miss) { sfx.sputter(); arrived = true; hopping = false; hopTimer = setTimeout(() => { const cb = hopCb; hopCb = null; cb && cb(); }, 2100); return; }
+      if (miss) { sfx.sputter(); sfx.alarm(); arrived = true; hopping = false; hopTimer = setTimeout(() => { const cb = hopCb; hopCb = null; cb && cb(); }, 2100); return; }
       dur = reduce ? 1 : Math.min(3200, 1100 + (pEnd - pStart) * 6000);
       if (pStart === 0 && !reduce) { sfx.countdown(); sfx.liftoff(); launch.t1 = setTimeout(() => { introAt = performance.now(); intro = true; }, 750); }
-      else { t0 = performance.now(); running = true; hiss(0, 0.6, 400, 3500, 0.2, 1.4); }
+      else { t0 = performance.now(); running = true; sfx.boost(false); }
       launch.t2 = setTimeout(() => sfx.humStart(), pStart === 0 ? 1800 : 50);
     },
     // The end screen: no flight, just the view from where you ended up.
