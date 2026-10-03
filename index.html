@@ -1642,7 +1642,7 @@
   // ---------- Planets: one per day ----------
   const PLANETS = {
     earth:  { name: "Earth", sky: "#29ADFF", paint: (u, v) => { const n = fbm(u * 3 + 5, v * 3, 1); const lat = Math.abs(v);
-              if (lat > 0.82) return "#FFF1E8"; if (fbm(u * 4, v * 4 + 9, 4) > 0.68) return "#FFF1E8";
+              if (lat > 0.94) return "#FFF1E8"; if (fbm(u * 4, v * 4 + 9, 4) > 0.68) return "#FFF1E8";
               return n > 0.55 ? (n > 0.66 ? "#AB5236" : "#00E436") : (n > 0.5 ? "#29ADFF" : "#1D5DB8"); } },
     saturn: { name: "Ringed giant", sky: "#C2A16B", ring: ["#FFCCAA", "#AB8A5C", "#FFF1E8"], paint: (u, v) => { const b = Math.sin(v * 18 + fbm(u * 2, v * 2, 2) * 2);
               return b > 0.5 ? "#FFCCAA" : b > -0.2 ? "#E0B07A" : "#AB8A5C"; } },
@@ -2216,8 +2216,9 @@
   // Home, under your feet: a huge Earth at the bottom that drops away as you climb.
   function drawHome(drop) {
     if (drop >= 1) return;
-    const w = 420, h = planetImg.height * w / planetImg.width;
-    ctx.drawImage(planetImg, Math.round(CX - w / 2 - swayX * 0.3), Math.round(H * 0.56 + drop * drop * H * 0.8), Math.round(w), Math.round(h));
+    // a whole round globe below you, not a wall of ice cap
+    const w = 230, h = planetImg.height * w / planetImg.width;
+    ctx.drawImage(planetImg, Math.round(CX - w / 2 - swayX * 0.3), Math.round(H * 0.47 + drop * drop * H * 0.8), Math.round(w), Math.round(h));
   }
 
   // The warp tunnel: rings of light that spiral around you and rush past.
