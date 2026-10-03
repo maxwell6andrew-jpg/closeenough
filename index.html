@@ -1142,13 +1142,13 @@
     mars: [[".rr.", "rrdr", "rdrr", ".rr."], { r: "#E08850", d: "#7E2553" }],
     nebula: [[".pb.", "pwpb", "bpwp", ".bp."], { p: "#FF77A8", b: "#3E2E85", w: "#FFF1E8" }],
     nova: [["y.y.y", ".ooo.", "yowoy", ".ooo.", "y.y.y"], { y: "#FFEC27", o: "#FFA300", w: "#FFF1E8" }],
-    comet: [["...w", "..c.", ".c..", "c..."], { w: "#FFF1E8", c: "#29ADFF" }],
+    kepler: [[".www.", "wbgbw", "bggbb", "wbbgw", ".www."], { b: "#1E9AA8", g: "#3EB86A", w: "#9FE8FF" }],
     giant: [[".ooo.", "ocwco", "ooooo", "owcwo", ".ooo."], { o: "#E0A060", c: "#FFF1E8", w: "#AB5236" }],
     ufo: [[".g.", "sss", ".y."], { g: "#7CE3A1", s: "#C2C3C7", y: "#FFEC27" }],
     hole: [[".ppp.", "pk.kp", "p.k.p", "pk.kp", ".ppp."], { p: "#FF77A8", k: "#000" }],
     whale: [["..y..", ".yyy.", "yyyyy", ".yyy.", "..y.."], { y: "#FFEC27" }],
   };
-  const SHORT = { sats: "Low orbit", rocks: "Asteroids", moon: "The Moon", mars: "Mars", comet: "A comet", giant: "Gas giant", ufo: "Aliens", nebula: "Nebula", nova: "Supernova", hole: "Black hole", whale: "The edge" };
+  const SHORT = { sats: "Low orbit", rocks: "Asteroids", moon: "The Moon", mars: "Mars", giant: "Gas giant", kepler: "Kepler-452b", ufo: "Aliens", nebula: "Nebula", nova: "Supernova", hole: "Black hole", whale: "The edge" };
   const climbPct = (p) => 3 + p * 92;
   function pix(cv, rows, pal) {
     const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height);
@@ -1579,7 +1579,7 @@
       if ([3, 7, 14, 30, 50, 100].includes(sk)) setTimeout(() => celebrateStreak(sk), 1400);
       document.dispatchEvent(new CustomEvent("ce:played", { detail: entry }));
     }
-    const WHERE = { sats: "low orbit", rocks: "the asteroid belt", moon: "the Moon", mars: "Mars", comet: "a comet", giant: "the gas giant",
+    const WHERE = { sats: "low orbit", rocks: "the asteroid belt", moon: "the Moon", mars: "Mars", giant: "the gas giant", kepler: "Kepler-452b",
       ufo: "the aliens", nebula: "a nebula", nova: "a supernova", hole: "a black hole", whale: "the edge of the universe" };
     let reached = "";
     if (window.Launch) {
@@ -1653,6 +1653,12 @@
     jupiter:{ name: "Storm giant", sky: "#E0A060", paint: (u, v) => { const dx = u - 0.25, dy = v - 0.3;
               if (dx * dx * 2 + dy * dy * 12 < 0.03) return "#BE2D2D"; const b = Math.sin(v * 14 + fbm(u * 3, v, 6) * 3);
               return b > 0.4 ? "#FFF1E8" : b > -0.3 ? "#E0A060" : "#AB5236"; } },
+    kepler: { name: "Kepler-452b", sky: "#3FE0D0", glow: "#9FE8FF", paint: (u, v) => {
+              if (Math.abs(v) > 0.84) return "#FFF1E8";
+              const sw = fbm(u * 3 + Math.sin(v * 6) * 0.6, v * 5, 14);          // swirling clouds
+              if (sw > 0.66) return "#FFF1E8";
+              const n = fbm(u * 2.6 + 3, v * 2.6, 13);
+              return n > 0.6 ? (n > 0.7 ? "#E8C76A" : "#3EB86A") : n > 0.52 ? "#3FE0D0" : n > 0.38 ? "#1E9AA8" : "#155E82"; } },
     lava:   { name: "Lava world", sky: "#7E2553", paint: (u, v) => { const n = fbm(u * 4, v * 4, 9); const crack = Math.abs(noise(u * 7, v * 7, 2) - 0.5) < 0.05;
               return crack ? "#FFA300" : n > 0.6 ? "#FF004D" : n > 0.4 ? "#3B1A2A" : "#1B0F14"; } },
   };
@@ -1666,11 +1672,11 @@
       for (let j = -R; j <= R; j++) for (let i = -R - ringPad; i <= R + ringPad; i++) {
         const ex = i / (R + ringPad), ey = j / ((R + ringPad) * 0.28);
         const d = ex * ex + ey * ey;
-        if (d > 1 || d < 0.45) continue;
+        if (d > 1 || d < (p.ringIn || 0.45)) continue;
         const inFront = j > 0;
         if (inFront !== front) continue;
         if (!front && i * i + j * j < R * R) continue;
-        const band = Math.floor(d * 9) % 3;
+        const band = p.ringIn ? (d > 0.95 ? 0 : d > 0.86 ? 2 : d > 0.8 ? 1 : 1 + (i + j & 1)) % 3 : Math.floor(d * 9) % 3;
         x.fillStyle = p.ring[band]; x.fillRect(Math.round(cx + i), Math.round(cy + j), 1, 1);
       }
     };
@@ -1682,7 +1688,7 @@
       const lit = (-u * 0.6 - v * 0.55 + Math.sqrt(Math.max(0, 1 - u * u - v * v)) * 0.6);
       let col = p.paint(u, v);
       const k = lit > 0.35 ? 1.05 : lit > 0.05 ? 0.82 : 0.55;
-      x.fillStyle = d > (R - 1) * (R - 1) ? "#0A1029" : shade(col.startsWith("#") ? col : "#FFFFFF", k);
+      x.fillStyle = d > (R - 1) * (R - 1) ? (p.glow && lit > 0.05 ? p.glow : "#0A1029") : shade(col.startsWith("#") ? col : "#FFFFFF", k);
       x.fillRect(Math.round(cx + i), Math.round(cy + j), 1, 1);
     }
     ring(true);
@@ -1917,6 +1923,7 @@
   }
   const MOON = renderMoon(34);
   const GIANT = renderPlanet(PLANETS.jupiter, 46);
+  const KEPLER = renderPlanet(PLANETS.kepler, 40);
   const MARS = renderPlanet(PLANETS.mars, 30);
   // A nebula: soft clouds of pink, purple, and blue, with newborn stars.
   const NEBULA = (() => {
@@ -1952,8 +1959,8 @@
     { p: 0.12, key: "rocks", name: "ASTEROID BELT", sub: "Dodge, dodge, dodge",     ang: 0,    size: 0.1,  off: 0.6 },
     { p: 0.19, key: "moon",  name: "THE MOON",      sub: "Waved at the astronauts", ang: -0.6, size: 0.42, off: 0.5 },
     { p: 0.27, key: "mars",  name: "MARS",          sub: "Honked at the rovers",    ang: 1.0,  size: 0.4,  off: 0.5 },
-    { p: 0.35, key: "comet", name: "A COMET",       sub: "Caught its tail",         ang: 2.5,  size: 0.5,  off: 0.55 },
-    { p: 0.44, key: "giant", name: "THE GAS GIANT", sub: "Slingshot!",              ang: 2.2,  size: 0.55, off: 0.55 },
+    { p: 0.35, key: "giant", name: "THE GAS GIANT", sub: "Slingshot!",              ang: 2.2,  size: 0.55, off: 0.55 },
+    { p: 0.44, key: "kepler", name: "KEPLER-452B",  sub: "Earth's cousin. Life? Maybe!", ang: 2.5, size: 0.55, off: 0.55 },
     { p: 0.53, key: "ufo",   name: "ALIENS!",       sub: "They seemed nice",        ang: -0.9, size: 0.36, off: 0.45 },
     { p: 0.62, key: "nebula", name: "A NEBULA",     sub: "Where stars are born",    ang: -2.0, size: 0.8,  off: 0.5 },
     { p: 0.72, key: "nova",  name: "A SUPERNOVA",   sub: "Front-row seats",         ang: 0.7,  size: 0.5,  off: 0.5 },
@@ -2003,7 +2010,8 @@
     moon: ring(7, 43, (i, h) => ({ ...spot(h, 40, 260), img: ROCKS[(i + 3) % ROCKS.length].img, size: 2 + h(5) * 4 })),
     mars: [{ x: -58, y: -44, z: 150, ph: 0, img: ROCKS[2].img, size: 6 }, { x: 62, y: 30, z: 230, ph: 2, img: ROCKS[5].img, size: 4 },
       ...ring(16, 44, (i, h) => ({ ...spot(h, 30, 220), col: i % 2 ? "#FFA300" : "#AB5236", flow: 10 }))],
-    comet: ring(22, 45, (i, h) => ({ ...spot(h, 20, 260), col: i % 3 ? "#9FE8FF" : "#FFF1E8", flow: 34 })),
+    kepler: [{ x: 58, y: -42, z: 170, ph: 1, img: MOON, size: 6 },
+      ...ring(16, 45, (i, h) => ({ ...spot(h, 30, 240), col: i % 3 ? "#3FE0D0" : "#FFEC27", twinkle: true }))],
     giant: ring(3, 46, (i, h) => ({ ...spot(h, 70, 220), img: MOON, size: 6 + h(5) * 7 })),
     ufo: [{ x: -62, y: 34, z: 190, ph: 0, img: UFO, size: 15 }, { x: 58, y: -46, z: 250, ph: 3, img: UFO, size: 15 },
       ...ring(10, 47, (i, h) => ({ ...spot(h, 40, 240), col: "#FF77A8", twinkle: true }))],
@@ -2040,12 +2048,12 @@
   const LINES = {
     sats: ["BEEP BOOP! HI!", "BOOP BEEP?", "SIGNAL: FRIENDLY"], rocks: ["WATCH IT, PAL!", "OOF. ROCKY.", "STILL HERE!"],
     moon: ["OH HI! NICE SHIP!", "*WINK*", "SEE YOU TONIGHT"], mars: ["HONK HONK! - ROVER", "BEEP! FOUND A ROCK", "HONK!"],
-    comet: ["CATCH ME!", "TOO SLOW!", "ZOOOM"], giant: ["WHEEE! SLINGSHOT!", "AGAIN! AGAIN!", "SO MUCH GAS"],
+    kepler: ["DO I HAVE LIFE?", "WANNA LIVE HERE?", "ROOM FOR ONE MORE!", "HI, COUSIN EARTH!"], giant: ["WHEEE! SLINGSHOT!", "AGAIN! AGAIN!", "SO MUCH GAS"],
     ufo: ["HI EARTHLING!", "WE COME IN PEACE", "U R SO SMART", "COME BACK TMRW!"],
     nebula: ["SHH... BABY STARS", "*TWINKLE*", "A STAR IS BORN"], nova: ["KA-BOOOM!", "DO IT AGAIN!", "BOOM BOOM!"],
     hole: ["DON'T LOOK DOWN", "SLUUURP", "NOM NOM STARS"],
   };
-  const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, comet: 0.36, nebula: 0.9, sats: 0.5, nova: 0.55 };
+  const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, nebula: 0.9, sats: 0.5, nova: 0.55 };
   let greet = null;   // { st, at, line, poke }
   function stopCenter(st) {
     if (st.key === "rocks") return [0, 0];
@@ -2124,6 +2132,7 @@
     } else {
       drawStop(st, now, true);
       if (st.key === "moon" || st.key === "mars" || st.key === "giant") drawFace(x0, y0, S, now, st.p * 10, st.key === "moon" && g ? g.poke : 0);
+      if (st.key === "kepler") drawFace(x0, y0, S, now, 4.4, g ? g.poke : 0);
       const since = g && g.poke ? now - g.poke : 1e9;
       // Mars: the rover rolls out to say hi.
       if (st.key === "mars" && since < 1600) drawSprite(ROVER, x0 + (0.45 + Math.min(1, since / 400) * 0.15) * S, y0 + 0.42 * S, z, S * 0.28);
@@ -2165,15 +2174,7 @@
       drawSprite(r.img, Math.cos(a) * rr, Math.sin(a) * rr * 0.75, z + r.dz, st.u * (0.12 + r.r * 0.1));
     }
     if (st.key === "moon") drawSprite(MOON, x, y, z, S);
-    if (st.key === "comet") {
-      for (let i = 0; i < 22; i++) {
-        const q = proj(x - i * 0.06 * st.u, y + i * 0.045 * st.u, z + i * 1.2); if (!q) continue;
-        const sz = Math.max(1, Math.round((i < 3 ? 0.08 : 0.04) * st.u * q.s));
-        if (sz > 60) continue;
-        ctx.fillStyle = i < 3 ? "#FFF1E8" : i < 9 ? "#9FE8FF" : "#29ADFF";
-        ctx.fillRect(Math.round(q.x), Math.round(q.y), sz, sz);
-      }
-    }
+    if (st.key === "kepler") drawSprite(KEPLER, x, y, z, S);
     if (st.key === "giant") drawSprite(GIANT, x, y, z, S);
     if (st.key === "mars") drawSprite(MARS, x, y, z, S);
     if (st.key === "nebula") drawSprite(NEBULA, x, y, z, S);
@@ -2335,13 +2336,9 @@
     speed = 4;
     if (fly) {
       const T = now - fly.t0, f = fly;
-      if (f.surge) {                                   // a little push, same stop
-        const k = Math.min(1, T / f.surge);
-        speed = 4 + Math.sin(Math.PI * k) * 260; zoff = -Math.sin(Math.PI * k) * 22; shake = k < 0.3 ? 1 : 0;
-        if (k >= 1) land(now);
-      } else if (T < f.dep) {                          // leaving: what's around you rushes past
+      if (T < f.dep) {                          // leaving: what's around you rushes past
         const k0 = f.home ? Math.max(0, (T - f.ignite) / (f.dep - f.ignite)) : T / f.dep, k = k0 * k0;
-        if (f.home && T < f.ignite) shake = 2; else shake = 1;
+        shake = reduce ? 0 : f.home && T < f.ignite ? 2 : 1;
         speed = 6 + k * VMAX; zoff = -k * 115; drop = f.home ? k : 1; v = Math.max(0, (k0 - 0.55) / 0.45);
         view = f.from;
       } else if (T < f.dep + f.warp) {                 // the warp tunnel
@@ -2350,7 +2347,7 @@
         f.passed.forEach((st, n) => { if (!st.done && k >= (n + 1) / (f.passed.length + 1)) { st.done = true; passBy(st.stop); } });
       } else if (T < f.dep + f.warp + f.arr) {         // slowing down: the next stop drifts in
         const k = (T - f.dep - f.warp) / f.arr, e = ease3(k);
-        if (!f.called) { f.called = true; arriving(f.to); }
+        if (!f.called) { f.called = true; arriving(f.to, f.from === f.to); }
         speed = 4 + (VMAX - 4) * Math.pow(1 - k, 3); zoff = (1 - e) * 520; v = Math.max(0, 1 - k / 0.55); view = f.to;
       } else land(now);
     }
@@ -2382,7 +2379,7 @@
     ctx.globalAlpha = 1;
 
     // the one place you're at (or leaving, or arriving at)
-    if (view === -1 || (fly && !fly.surge && view === fly.from && fly.home)) drawHome(drop);
+    if (view === -1 || (fly && view === fly.from && fly.home)) drawHome(drop);
     if (view >= 0) {
       const st = STOPS[view];
       if (st.key === "whale") drawGalaxy(now, 46, 0.8);
@@ -2425,15 +2422,16 @@
   // A stop you zip past inside the warp tunnel.
   function passBy(st) { shown.add(st.key); callout(st, "Zoom!", true); sfx.blip(STOPS.indexOf(st)); }
   // The tunnel opens up and the next stop slides in.
-  function arriving(i) { const st = STOPS[i]; shown.add(st.key); callout(st); sfx.slow(); setTimeout(() => blip(st), 250); }
+  function arriving(i, same) {
+    const st = STOPS[i], next = STOPS[i + 1]; shown.add(st.key);
+    callout(st, same && next ? `Closer to ${next.name.toLowerCase().replace(/^the /, "").replace(/!$/, "")}` : null);
+    sfx.slow(); setTimeout(() => blip(st), 250);
+  }
   function land(now) {
     const f = fly; fly = null; sfx.humStop();
     at = f.to; speed = 4;
     for (let i = 0; i <= at; i++) shown.add(STOPS[i].key);
-    if (f.surge) {
-      const next = STOPS[at + 1];
-      if (next) callout(STOPS[Math.max(0, at)], `Next stop: ${next.name.toLowerCase().replace(/^the /, "").replace(/!$/, "")}`);
-    } else if (at >= 0) {
+    if (at >= 0) {
       greet = null;
       if (STOPS[at].key === "whale") { helloAt = now; setTimeout(() => sayHello(), 500); }
       else startGreet(STOPS[at], now);
@@ -2509,7 +2507,7 @@
       moon: () => { tone(1568, 0.05, 0, "sine", 0.05); tone(2093, 0.09, 0.06, "sine", 0.05); },              // wink
       nebula: () => [2093, 2637, 3136, 2637].forEach((f, i) => tone(f, 0.05, i * 0.07, "triangle", 0.03)),   // twinkle
       nova: () => { hiss(0, 0.5, 2000, 80, 0.25, 1); tone(110, 0.25, 0, "square", 0.06); },                  // boom
-      comet: () => hiss(0, 0.45, 6000, 800, 0.15, 1.5),                                                       // whoosh
+      kepler: () => [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.1, i * 0.07, "sine", 0.05)),         // a hopeful little rise
       giant: () => { tone(200, 0.1, 0, "sine", 0.08); tone(400, 0.12, 0.1, "sine", 0.07); },                // boing
       sats: () => { tone(1760, 0.04, 0, "square", 0.03); tone(1319, 0.05, 0.07, "square", 0.03); },
       rocks: () => [140, 110].forEach((f, i) => tone(f, 0.06, i * 0.06, "sawtooth", 0.05)),
@@ -2556,7 +2554,7 @@
       if (key === "sats") for (let i = 0; i < 3; i++) { tone(1760, 0.05, i * 0.22, "square", 0.03); tone(2349, 0.05, i * 0.22 + 0.08, "square", 0.025); }
       if (key === "rocks") for (let i = 0; i < 4; i++) { hiss(i * 0.17 + Math.random() * 0.05, 0.22, 220, 60, 0.3, 1.2); tone(70 - i * 6, 0.18, i * 0.17, "triangle", 0.08); }
       if (key === "moon") { hiss(0, 1.3, 300, 1600, 0.12, 0.7); [392, 494, 587].forEach((f, i) => glide("sine", f, f, 1.1, i * 0.05, 0.04)); }
-      if (key === "comet") { hiss(0, 0.9, 7000, 900, 0.14, 1.5); [2093, 1760, 1568, 1319, 1175].forEach((f, i) => tone(f, 0.08, i * 0.07, "triangle", 0.03)); }
+      if (key === "kepler") { hiss(0, 1.2, 1800, 600, 0.1, 0.9); [330, 415, 494, 659].forEach((f, i) => glide("sine", f, f * 1.01, 1.2, i * 0.12, 0.04, 5, 4)); }
       if (key === "giant") { glide("sine", 80, 260, 0.6, 0, 0.12); glide("sine", 260, 70, 0.7, 0.6, 0.1); hiss(0.1, 1.0, 200, 900, 0.1, 0.6); }
       if (key === "ufo") { glide("sine", 520, 880, 0.5, 0, 0.07, 9, 60); glide("sine", 880, 440, 0.6, 0.5, 0.07, 9, 60); glide("sine", 440, 660, 0.5, 1.1, 0.06, 12, 40); }
       if (key === "mars") { hiss(0, 0.8, 600, 200, 0.12, 0.8); [262, 330, 392].forEach((f, i) => tone(f, 0.12, i * 0.1, "square", 0.04)); tone(523, 0.2, 0.3, "square", 0.04); }
@@ -2623,7 +2621,7 @@
   addEventListener("pointerup", unlock); addEventListener("click", unlock);
 
   // ---------- API used by the game ----------
-  let doneCb = null;
+  let doneCb = null, hopAt = 0;
   const setPlanet = (key) => {
     if (planetKey !== key) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120); }
     $("planet-name").textContent = PLANETS[planetKey].name;
@@ -2636,14 +2634,14 @@
   // Fly from stop a to stop b (b > a), then call done(greeted).
   function flyFrom(a, b, done) {
     const home = a < 0, gap = b - a - 1;
-    fly = { from: a, to: b, home, t0: performance.now(), ignite: home ? 750 : 0, dep: reduce ? 1 : home ? 1500 : 650,
-      warp: reduce ? 1 : Math.min(2200, 1000 + gap * 280), arr: reduce ? 1 : 1150, called: false, done,
+    fly = { from: a, to: b, home, t0: performance.now(), ignite: home && !reduce ? 750 : 0, dep: reduce ? 450 : home ? 1500 : 650,
+      warp: reduce ? 600 : Math.min(2200, 1000 + Math.max(0, gap) * 280), arr: reduce ? 700 : 1150, called: false, done,
       passed: STOPS.slice(a + 1, b).map((stop) => ({ stop, done: false })) };
     greet = null;
     if (home) { sfx.countdown(); sfx.liftoff(); } else sfx.boost(false);
     flyFrom.t = setTimeout(() => { sfx.warp(fly ? fly.warp / 1000 + 0.3 : 1); sfx.humStart(); }, fly.dep - 150);
   }
-  setInterval(() => { if (fly && !fly.surge) sfx.humAt(STOPS[Math.max(0, fly.to)].p); }, 200);
+  setInterval(() => { if (fly) sfx.humAt(STOPS[Math.max(0, fly.to)].p); }, 200);
   const stopFor = (s) => { const i = idxFor(Math.max(1, s)); return i >= 0 ? STOPS[i].name : "LIFTOFF"; };
   window.Launch = {
     cut: cutSounds,
@@ -2662,7 +2660,7 @@
     // Between rounds: always pick up where the last round left you, then fly on. A miss sputters in place.
     hop(fromS, toS, key, miss, onDone) {
       setPlanet(key); clearAll();
-      score = toS; hopCb = onDone || null;
+      score = toS; hopCb = onDone || null; hopAt = performance.now();
       at = idxFor(fromS);
       shown = new Set(STOPS.slice(0, at + 1).map((st) => st.key));
       const finish = (ms) => { hopTimer = setTimeout(() => { const cb = hopCb; hopCb = null; cb && cb(); }, ms); };
@@ -2671,8 +2669,7 @@
         finish(2600); return;
       }
       const to = idxFor(Math.max(1, toS));
-      if (to > at) flyFrom(at, to, (g) => finish(g ? (STOPS[to].key === "ufo" ? 3400 : 2400) : 900));
-      else { fly = { surge: 1300, t0: performance.now(), from: at, to: at, done: () => finish(900) }; sfx.boost(false); }
+      flyFrom(at, Math.max(at, to), (g) => finish(g ? (STOPS[Math.max(at, to)].key === "ufo" ? 3400 : 2400) : 900));
     },
     // The end screen: no flight, just the view from where you ended up.
     rest(s, key) {
@@ -2684,6 +2681,7 @@
     },
     // One tap: between rounds it continues; on the end screen it pokes whoever's there.
     skip() {
+      if (hopCb && performance.now() - hopAt < 900) return;
       if (hopCb) {
         clearTimeout(hopTimer); clearTimeout(flyFrom.t); sfx.humStop(); cutSounds();
         if (fly) { at = fly.to; fly = null; }
