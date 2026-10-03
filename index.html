@@ -517,7 +517,7 @@
     <section class="step" id="s-end" hidden>
       <div class="row"><span class="lbl" id="closed-l">Case #001 closed</span></div>
       <div class="stage" id="stage" hidden>
-        <canvas id="cv" width="180" height="320" aria-label="Your rocket launching into space"></canvas>
+        <canvas id="cv" width="360" height="640" aria-label="Your rocket launching into space"></canvas>
         <div class="hud">
           <div class="alt"><span class="lbl" id="planet-name">Earth-like</span><b id="alt">0/8 STOPS</b></div>
           <div class="callout" id="callout"></div>
@@ -789,19 +789,20 @@
     return c;
   }
   let planets = [];
+  const SKY_PX = 3;   // one sky pixel = 3 screen pixels
   function placePlanets(w, h) {
     // Phones: they peek in from the edges. Wide screens: they sit in the open space beside the game.
-    const side = Math.max(0, (w * 4 - 460) / 2 / 4), wide = side > 40;
+    const side = Math.max(0, (w * SKY_PX - 460) / 2 / SKY_PX), wide = side > 54;
     const L = side * 0.45, Rt = w - side * 0.5;
     planets = wide ? [
-      { img: pixelPlanet(15, "ringed"), x: L, y: h * 0.66 },
-      { img: pixelPlanet(9, "red"), x: Rt, y: h * 0.2 },
-      { img: pixelPlanet(5, "moon"), x: Rt - 14, y: h * 0.86 },
-      { img: pixelPlanet(4, "ice"), x: L + 18, y: h * 0.18 },
+      { img: pixelPlanet(20, "ringed"), x: L, y: h * 0.66 },
+      { img: pixelPlanet(12, "red"), x: Rt, y: h * 0.2 },
+      { img: pixelPlanet(7, "moon"), x: Rt - 19, y: h * 0.86 },
+      { img: pixelPlanet(5, "ice"), x: L + 24, y: h * 0.18 },
     ] : [   // phones: in the open sky under the game panel
-      { img: pixelPlanet(8, "ringed"), x: w * 0.24, y: h * 0.93 },
-      { img: pixelPlanet(5, "red"), x: w * 0.8, y: h * 0.9 },
-      { img: pixelPlanet(3, "moon"), x: w * 0.92, y: h * 0.97 },
+      { img: pixelPlanet(11, "ringed"), x: w * 0.24, y: h * 0.93 },
+      { img: pixelPlanet(7, "red"), x: w * 0.8, y: h * 0.9 },
+      { img: pixelPlanet(4, "moon"), x: w * 0.92, y: h * 0.97 },
     ];
   }
   function paintPlanets(t) {
@@ -811,14 +812,14 @@
     }
   }
   function sizeStars() {
-    const w = Math.ceil(innerWidth / 4);
-    sc.width = w; sc.height = Math.ceil(innerHeight / 4);
+    const w = Math.ceil(innerWidth / SKY_PX);
+    sc.width = w; sc.height = Math.ceil(innerHeight / SKY_PX);
     placePlanets(w, sc.height);
     if (w === starW && stars.length) return;      // same sky, just a taller or shorter window
     starW = w;
     // spread over the tallest the window is likely to get, so a growing toolbar never leaves a bare strip
-    const h = Math.ceil(Math.max(innerHeight, screen.height || 0) / 4);
-    stars = Array.from({ length: Math.round(w * h / 260) }, () => ({
+    const h = Math.ceil(Math.max(innerHeight, screen.height || 0) / SKY_PX);
+    stars = Array.from({ length: Math.round(w * h / 460) }, () => ({
       x: Math.random() * w | 0, y: Math.random() * h | 0, ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 1.4,
     }));
   }
@@ -847,10 +848,11 @@
 
   // Things drift across the sky behind the game (on the same low-res pixel grid as the stars).
   const FLY = {
-    sat: [["c.w.c", "cwwwc", "c.w.c"], { c: "#29ADFF", w: "#C2C3C7" }],
-    rock: [[".bb.", "bbbb", "bbb.", ".b.."], { b: "#AB5236" }],
-    rock2: [[".b.", "bbb", ".b."], { b: "#7A4A30" }],
-    ufo: [["..ggg..", ".gwwwg.", "sssssss", ".y.y.y."], { g: "#7CE3A1", w: "#FFF1E8", s: "#C2C3C7", y: "#FFEC27" }],
+    // a little satellite: gridded solar panels, a gold body, a dish, and a red light
+    sat: [["bBbB..W..bBbB", "BbBb.WWW.BbBb", "bBbBGOOOGbBbB", "BbBb.OoO.BbBb", "bBbB..r..bBbB"], { B: "#29ADFF", b: "#1D5DB8", G: "#C2C3C7", W: "#FFF1E8", O: "#FFA300", o: "#AB5236", r: "#FF004D" }],
+    rock: [[".aab..", "aabbbc", "abbbcc", ".bbcc.", "..cc.."], { a: "#E08850", b: "#AB5236", c: "#5F3A20" }],
+    rock2: [[".ab.", "abbc", ".bc."], { a: "#C2683F", b: "#7A4A30", c: "#4A2A18" }],
+    ufo: [["...ggg...", "..gWggg..", ".sSSSSSs.", "sYsPsYsPs", "..sssss.."], { g: "#7CE3A1", W: "#FFF1E8", S: "#E8E8EE", s: "#9A9BA3", Y: "#FFEC27", P: "#FF77A8" }],
     // Easter egg for Draftable: a crowned D.
     drafty: [["y.y.y", "yyyyy", ".....", "PPPP.", "P...P", "P...P", "P...P", "PPPP."], { y: "#FFEC27", P: "#FFF1E8" }],
   };
@@ -859,7 +861,7 @@
     // Hidden tabs keep their timers but pause drawing: don't queue up a sky full of flyers.
     if (reduce || !sc.width || document.hidden || flyers.length > 8) return;
     const fromLeft = Math.random() < 0.5, y = 4 + Math.random() * (sc.height - 12);
-    const speed = { sat: 9, rock: 14, ufo: 11, drafty: 7 }[kind] || 10;   // px (low-res) per second
+    const speed = { sat: 12, rock: 18, ufo: 15, drafty: 9 }[kind] || 13;   // px (low-res) per second
     const make = (k, dy = 0, dx = 0, sp = speed) => flyers.push({ k, x: fromLeft ? -8 - dx : sc.width + 8 + dx, y: y + dy, vx: (fromLeft ? 1 : -1) * sp, wob: Math.random() * 6, born: performance.now() });
     if (kind === "rock") { make("rock"); make("rock2", 6, 6, speed * 1.2); make("rock2", -5, 12, speed * 0.9); }
     else make(kind);
@@ -885,7 +887,7 @@
   // Tap something drifting by (in the open sky, not on the game panel).
   function tapSky(e) {
     if (reduce || e.target.closest("button, input, a, .px, .hop, .tut-banner, .climb, header")) return;
-    const sx = e.clientX / 4, sy = e.clientY / 4, now = performance.now();
+    const sx = e.clientX / SKY_PX, sy = e.clientY / SKY_PX, now = performance.now();
     for (let i = flyers.length - 1; i >= 0; i--) {
       const f = flyers[i]; if (!FLY[f.k]) continue;   // explosion bits can't be tapped
       const [rows] = FLY[f.k];
@@ -1656,12 +1658,13 @@
 
 (() => {
   const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
-  const W = cv.width, H = cv.height;
+  const SC = cv.width / 180, W = 180, H = 320;      // layout is 180x320; the canvas has SC x the pixels for finer detail
   ctx.imageSmoothingEnabled = false;
   const $ = (id) => document.getElementById(id);
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---------- Tiny helpers ----------
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], bay = (i, j) => BAYER[(j & 3) * 4 + (i & 3)] / 16;   // 8-bit dithering
   const hash = (x, y, s = 1) => { const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return n - Math.floor(n); };
   function noise(x, y, s) {
     const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
@@ -1731,7 +1734,8 @@
       // light from the top left, a hard 8-bit terminator
       const lit = (-u * 0.6 - v * 0.55 + Math.sqrt(Math.max(0, 1 - u * u - v * v)) * 0.6);
       let col = p.paint(u, v);
-      const k = lit > 0.35 ? 1.05 : lit > 0.05 ? 0.82 : 0.55;
+      const tl = lit + (bay(i, j) - 0.5) * 0.18;
+      const k = tl > 0.35 ? 1.05 : tl > 0.05 ? 0.82 : 0.55;
       x.fillStyle = d > (R - 1) * (R - 1) ? (p.glow && lit > 0.05 ? p.glow : "#0A1029") : shade(col.startsWith("#") ? col : "#FFFFFF", k);
       x.fillRect(Math.round(cx + i), Math.round(cy + j), 1, 1);
     }
@@ -1740,14 +1744,19 @@
   }
   function renderMoon(R) {
     const [c, x] = off(R * 2 + 2, R * 2 + 2);
-    const craters = Array.from({ length: 9 }, (_, k) => [hash(k, 1, 4) * 1.4 - 0.7, hash(k, 2, 4) * 1.4 - 0.7, 0.08 + hash(k, 3, 4) * 0.16]);
+    const CR = [[-0.62, -0.38, 0.15], [0.52, -0.55, 0.12], [0.7, 0.22, 0.1], [-0.58, 0.52, 0.13], [0.05, -0.8, 0.09], [0.38, 0.72, 0.09],
+      [-0.84, 0.06, 0.07], [0.84, -0.18, 0.06], [-0.3, -0.72, 0.06], [0.62, 0.55, 0.05], [-0.75, -0.6, 0.05]];
     for (let j = -R; j <= R; j++) for (let i = -R; i <= R; i++) {
       const d = i * i + j * j; if (d > R * R) continue;
-      const u = i / R, v = j / R;
-      let col = fbm(u * 3, v * 3, 11) > 0.55 ? "#C2C3C7" : "#9A9BA3";
-      for (const [a, b, r] of craters) { const q = (u - a) ** 2 + (v - b) ** 2; if (q < r * r) col = q > (r * 0.7) ** 2 ? "#FFF1E8" : "#5F6070"; }
-      const lit = -u * 0.6 - v * 0.5 + Math.sqrt(Math.max(0, 1 - u * u - v * v)) * 0.6;
-      x.fillStyle = d > (R - 1) * (R - 1) ? "#0A1029" : shade(col, lit > 0.3 ? 1 : lit > 0 ? 0.78 : 0.5);
+      const u = i / R, v = j / R, sea = fbm(u * 2.2 + 4, v * 2.2, 11);
+      let col = sea > 0.6 ? "#8E909A" : sea > 0.5 ? "#B4B6BE" : "#CDCFD6";
+      if (hash(i, j, 7) > 0.975) col = "#9EA0A8";
+      for (const [a, b, r] of CR) {
+        const du = u - a, dv = v - b, q = Math.hypot(du, dv) / r;
+        if (q < 1) col = q > 0.8 ? (du + dv < 0 ? "#ECECF2" : "#6E7080") : (du + dv < 0 ? "#7C7E88" : "#A8AAB4");
+      }
+      const lit = -u * 0.6 - v * 0.5 + Math.sqrt(Math.max(0, 1 - u * u - v * v)) * 0.6 + (bay(i, j) - 0.5) * 0.18;
+      x.fillStyle = d > (R - 1.2) * (R - 1.2) ? "#0A1029" : shade(col, lit > 0.3 ? 1 : lit > 0 ? 0.8 : 0.56);
       x.fillRect(R + i + 1, R + j + 1, 1, 1);
     }
     return c;
@@ -1771,42 +1780,88 @@
     sprite(["..YYY..", ".YOOOY.", "..OOO..", "...O..."], { Y: "#FFEC27", O: "#FFA300" }),
     sprite([".YYYYY.", "..YOY..", "..OOO..", "..O.O..", "...O..."], { Y: "#FFEC27", O: "#FFA300" }),
   ];
-  const SAT = sprite([
-    "BBBB.....BBBB",
-    "BBBB.WWW.BBBB",
-    "BBBBGWWWGBBBB",
-    "BBBB.WWW.BBBB",
-    "BBBB..W..BBBB",
-  ], { B: "#29ADFF", G: "#C2C3C7", W: "#FFF1E8" });
-  const UFO = sprite([
-    "......CCC......",
-    ".....CCWCC.....",
-    "....CCCCCCC....",
-    "..GGGGGGGGGGG..",
-    "GGYGGGYGGGYGGYG",
-    ".GGGGGGGGGGGGG.",
-    "...GG.....GG...",
-  ], { C: "#7CE3A1", W: "#FFF1E8", G: "#C2C3C7", Y: "#FFEC27" }, 2);
+  // A proper satellite: gridded solar panels, gold-foil body, a dish, and a blinking light.
+  const SATS = [0, 1].map((on) => {
+    const [c, x] = off(58, 30), P = (i, j, w, h, col) => { x.fillStyle = col; x.fillRect(i, j, w, h); };
+    P(14, 14, 30, 2, "#83769C"); P(14, 14, 30, 1, "#C2C3C7");                 // the struts
+    for (const px0 of [0, 44]) {
+      P(px0, 5, 14, 19, "#0A1F5C");
+      for (let r = 0; r < 4; r++) for (let q = 0; q < 3; q++) {
+        const cx0 = px0 + 1 + q * 4 + (q > 0 ? 0 : 0), cy0 = 6 + r * 4 + (r > 1 ? 1 : 0);
+        P(cx0, cy0, 4, 3, "#29ADFF"); P(cx0, cy0, 4, 1, "#9FE8FF"); P(cx0 + 3, cy0, 1, 3, "#1E6FBF");
+      }
+      P(px0, 5, 14, 1, "#3E4A80");
+    }
+    for (let j = 9; j < 24; j++) for (let i = 21; i < 37; i++) {             // crinkly gold foil, shaded to the right
+      const n = hash(i, j, 3), side = (i - 21) / 16;
+      x.fillStyle = n > 0.8 ? "#FFEC27" : side + (bay(i, j) - 0.5) * 0.3 > 0.62 ? "#AB5236" : n < 0.2 ? "#E08850" : "#FFA300";
+      x.fillRect(i, j, 1, 1);
+    }
+    P(21, 9, 16, 1, "#FFF1E8"); P(21, 23, 16, 1, "#5F3A20"); P(36, 9, 1, 15, "#5F3A20");
+    P(28, 3, 2, 6, "#C2C3C7");                                               // the dish on its mast
+    P(22, 2, 14, 2, "#FFF1E8"); P(24, 4, 10, 1, "#C2C3C7"); P(23, 1, 12, 1, "#C2C3C7"); P(28, 0, 2, 1, "#FFEC27");
+    P(33, 11, 2, 2, on ? "#FF004D" : "#5A1A2A"); if (on) P(33, 11, 1, 1, "#FFCCAA");
+    P(24, 26, 10, 2, "#5F574F"); P(26, 28, 6, 2, "#83769C");                 // thruster underneath
+    return c;
+  });
+  const SAT = SATS[0];
+  // The flying saucer: shiny metal with a band of lights and a glass dome.
+  const UFOS = [0, 1].map((f) => {
+    const [c, x] = off(64, 34);
+    for (let j = 0; j < 34; j++) for (let i = 0; i < 64; i++) {
+      const du = (i - 32) / 13, dv = (j - 14) / 11;                            // the dome
+      if (j <= 16 && du * du + dv * dv <= 1) {
+        const edge = du * du + dv * dv > 0.8, hi = du < -0.25 && dv < -0.2 && du * du + dv * dv < 0.55;
+        x.fillStyle = edge ? "#1D5A4A" : hi ? (bay(i, j) > 0.3 ? "#E8FFF4" : "#9CF0C8") : du + (bay(i, j) - 0.5) * 0.4 > 0.35 ? "#2E8C6E" : "#5FD3A3";
+        x.fillRect(i, j, 1, 1);
+      }
+      const su = (i - 32) / 31.5, sv = (j - 21) / 7.5;                          // the saucer
+      if (su * su + sv * sv <= 1 && j >= 14) {
+        const e = su * su + sv * sv > 0.86, t = sv + (bay(i, j) - 0.5) * 0.35;
+        x.fillStyle = e ? "#2A2D3A" : t < -0.45 ? "#FFF1E8" : t < 0 ? "#D6D7DE" : t < 0.45 ? "#9A9BA3" : "#5F6070";
+        if (!e && j === 18 && Math.abs(su) < 0.7) x.fillStyle = "#FFFFFF";     // a shine line
+        x.fillRect(i, j, 1, 1);
+      }
+      const bu = (i - 32) / 10, bv = (j - 28) / 3.5;                            // the belly
+      if (bu * bu + bv * bv <= 1 && j >= 27) { x.fillStyle = bu * bu + bv * bv > 0.7 ? "#2A2D3A" : "#83769C"; x.fillRect(i, j, 1, 1); }
+    }
+    for (let k = 0; k < 7; k++) {                                              // the lights blink in turn
+      const lx = 6 + k * 8.5 | 0, ly = 21, on = (k + f) % 2;
+      x.fillStyle = "#2A2D3A"; x.fillRect(lx - 1, ly - 1, 4, 4);
+      x.fillStyle = on ? (k % 3 ? "#FFEC27" : "#FF77A8") : "#7A6A20"; x.fillRect(lx, ly, 2, 2);
+      if (on) { x.fillStyle = "#FFFFFF"; x.fillRect(lx, ly, 1, 1); }
+    }
+    return c;
+  });
+  const UFO = UFOS[0];
   const ALIEN_WAVE = sprite(["G.G", "GGG", ".G."], { G: "#00E436" }, 2);
   // The alien crew: big eyes, antennae, a smile, and one arm that waves.
-  const APAL = { G: "#00E436", D: "#008751", W: "#FFF1E8", K: "#0A1029", Y: "#FFEC27", P: "#FF77A8" };
+  const APAL = { G: "#00E436", L: "#8CF58C", D: "#008751", W: "#FFF1E8", K: "#0A1029", Y: "#FFEC27", P: "#FF77A8" };
   const alienRows = (blink, armUp) => [
-    "..Y...Y..",
-    "...D.D...",
-    "..GGGGG..",
-    blink ? ".GGGGGGG." : ".GWWGWWG.",
-    blink ? ".GKKGKKG." : ".GWKGWKG.",
-    (armUp ? "" : "") + ".GPGGGPG" + (armUp ? "G" : "."),
-    ".GGKKKGG" + (armUp ? "G" : "."),
-    (armUp ? "..GGGGG.G" : "G.GGGGG.G"),
-    "...G.G...",
-  ].map((r) => (r + ".........").slice(0, 9));
+    "..Y.........Y..",
+    "..K.........K..",
+    "...K.......K...",
+    "....KKKKKKK....",
+    "...KLLLLGGGK...",
+    "..KLLGGGGGGDK..",
+    blink ? ".KLGGGGGGGGGDK." : ".KLWWWGGGWWWDK.",
+    blink ? ".KGKKKGGGKKKDK." : ".KGWKKGGGWKKDK.",
+    blink ? ".KGGGGGGGGGGDK." : ".KGWKWGGGWKWDK.",
+    ".KPPGGGGGGGPPDK",
+    ".KGGGKGGGKGGDK.",
+    "..KGGGKKKGGDK" + (armUp ? "KG" : ".."),
+    "...KDGGGGDDK" + (armUp ? "KGK" : "..."),
+    (armUp ? "....KKKKKKKGK.." : "....KKKKKKK...."),
+    (armUp ? "...KGLGGGDKK..." : "..KKGLGGGDKK..."),
+    (armUp ? "..KGKGGGGDK...." : ".KGKKGGGGDKKGK."),
+    "...KK.K.K.KK...",
+  ].map((r) => (r + "...............").slice(0, 15));
   const ALIEN = [0, 1, 2, 3].map((k) => sprite(alienRows(k & 1, k & 2), APAL));   // [open, blink, open+wave, blink+wave]
   // The black hole: a round black center, a swirling disk (white-hot inside, purple at the edge,
   // brighter on the side spinning toward you), a lensed ring arching over and under the hole, and a
   // dithered glow so it melts into space. Drawn once into 6 frames, then scaled like any sprite.
   const HOLE = (() => {
-    const W = 80, H = 48, cx = 40, cy = 24, frames = [];
+    const Z = 2, W = 80 * Z, H = 48 * Z, cx = 40 * Z, cy = 24 * Z, frames = [];
     const COLS = ["#FFF1E8", "#FFEC27", "#FFA300", "#FF77A8", "#BE3A84", "#7E2553", "#3E2E85"];
     const shade = (t, a, f) => {                 // t: 0 inner .. 1 outer, a: angle
       const swirl = Math.sin(a * 5 - f * 1.05 + t * 9) * 0.5 + 0.5;          // spiral streaks that turn
@@ -1819,7 +1874,7 @@
       const px = (i, j, col) => { x.fillStyle = col; x.fillRect(i, j, 1, 1); };
       const disk = (front) => {                                               // flat disk, tilted toward us
         for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
-          const dx = (i - cx) / 38, dy = (j - cy) / (front ? 13 : 9), r = Math.hypot(dx, dy);   // the near half sits lower and thicker, hiding the hole's bottom
+          const dx = (i - cx) / (38 * Z), dy = (j - cy) / ((front ? 13 : 9) * Z), r = Math.hypot(dx, dy);   // the near half sits lower and thicker, hiding the hole's bottom
           if (r < 0.38 || r > 1) continue;
           if ((j >= cy) !== front) continue;
           const t = (r - 0.38) / 0.62;
@@ -1830,8 +1885,8 @@
       disk(false);                                                            // the far half, behind the hole
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {               // lensed light bending over and under
         const d = Math.hypot(i - cx, (j - cy) * 1.05);
-        if (d >= 12.5 && d < 18.5) {
-          const t = (d - 12.5) / 6;
+        if (d >= 12.5 * Z && d < 18.5 * Z) {
+          const t = (d - 12.5 * Z) / (6 * Z);
           if (t > 0.6 && (i + j + f) % 2) continue;
           if (t > 0.85 && (i * 3 + j) % 3) continue;
           px(i, j, shade(t * 0.9, Math.atan2(j - cy, i - cx) + Math.PI / 2, f));
@@ -1839,8 +1894,8 @@
       }
       for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {               // photon ring, then the black center
         const d = Math.hypot(i - cx, (j - cy) * 1.05);
-        if (d < 13.2 && d >= 12) px(i, j, (i + f) % 3 ? "#FFF1E8" : "#FFEC27");
-        if (d < 12) px(i, j, "#000000");
+        if (d < 13.4 * Z && d >= 12 * Z) px(i, j, (i + f) % 3 ? "#FFF1E8" : "#FFEC27");
+        if (d < 12 * Z) px(i, j, "#000000");
       }
       disk(true);                                                             // the near half crosses in front
       frames.push(c);
@@ -1851,139 +1906,128 @@
   const HEART = sprite([".P.P.", "PPPPP", "PPPPP", ".PPP.", "..P.."], { P: "#FF77A8" });
   function rock(seed, r) {
     const [c, x] = off(r * 2 + 2, r * 2 + 2);
+    const pits = Array.from({ length: 3 }, (_, k) => [(hash(k, 1, seed) - 0.5) * r, (hash(k, 2, seed) - 0.5) * r, 1 + hash(k, 3, seed) * r * 0.2]);
     for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const a = Math.atan2(j, i), rr = r * (0.72 + 0.28 * noise(Math.cos(a) * 2 + seed, Math.sin(a) * 2, seed));
-      if (i * i + j * j > rr * rr) continue;
-      x.fillStyle = (i + j) < 0 ? "#AB5236" : hash(i, j, seed) > 0.8 ? "#5F574F" : "#7A4A30";
-      x.fillRect(r + i + 1, r + j + 1, 1, 1);
+      const dd = Math.hypot(i, j); if (dd > rr) continue;
+      const t = -(i + j) / (r * 1.6) + (bay(i, j) - 0.5) * 0.35;
+      let col = dd > rr - 1 ? "#3A2014" : t > 0.35 ? "#E08850" : t > 0 ? "#AB5236" : t > -0.4 ? "#7A4A30" : "#4A2A18";
+      for (const [pa, pb, pr] of pits) if ((i - pa) ** 2 + (j - pb) ** 2 < pr * pr) col = (i - pa) + (j - pb) < 0 ? "#4A2A18" : "#C2683F";
+      x.fillStyle = col; x.fillRect(r + i + 1, r + j + 1, 1, 1);
     }
     return c;
   }
-  function renderWhale() {
-    const [c, x] = off(120, 60);
-    const px = (i, j, col) => { x.fillStyle = col; x.fillRect(i, j, 1, 1); };
-    for (let j = 0; j < 60; j++) for (let i = 0; i < 120; i++) {
-      const u = (i - 52) / 46, v = (j - 30) / (18 + 4 * Math.cos(u * 1.6));
-      const body = u * u + v * v < 1 && i < 98;
-      const tail = i >= 88 && Math.abs(j - 30) < (i - 88) * 0.9 + 2 && Math.abs(j - 30) > (i - 88) * 0.25 && i < 116;
-      if (!body && !tail) continue;
-      let col = v > 0.25 ? "#C2C3C7" : "#3E2E85";
-      if (v > 0.25 && Math.floor(i / 3) % 2 === 0 && v > 0.4) col = "#9EA9D4";
-      if (hash(i, j, 21) > 0.985 && v < 0.2) col = "#FFF1E8";   // starry skin
-      px(i, j, col);
+  const TW = 128, TH = 88;
+  const TUB = [0, 1].map((frame) => {
+    const [c, x] = off(TW, TH);
+    const disc = (cx, cy, rx, ry, paint) => { for (let j = Math.floor(cy - ry); j <= cy + ry; j++) for (let i = Math.floor(cx - rx); i <= cx + rx; i++) {
+      const u = (i + 0.5 - cx) / rx, v = (j + 0.5 - cy) / ry, d = u * u + v * v; if (d > 1) continue;
+      const col = paint(u, v, d, i, j); if (col) { x.fillStyle = col; x.fillRect(i, j, 1, 1); } } };
+    const shaded = (base, lite, dark, ink) => (u, v, d, i, j) => d > 0.84 ? ink : (u + v) + (bay(i, j) - 0.5) * 0.5 < -0.7 ? lite : (u + v) + (bay(i, j) - 0.5) * 0.5 > 0.55 ? dark : base;
+    // the pink cosmic guy: a tall rounded body with a waving arm
+    const pink = shaded("#D94FA0", "#FF9ED6", "#A8327A", "#4A1438");
+    disc(34, 50, 17, 22, pink);
+    disc(34, 24, 14, 14, pink);
+    const wave = frame ? -6 : 0;
+    for (let k = 0; k <= 10; k++) disc(46 + k * 1.1, 38 - k * (1.4 + (frame ? 0.6 : 0)), 2.6, 2.6, pink);
+    disc(58.5, 22 + wave, 4, 4, pink);
+    for (const ex of [28, 40]) { disc(ex, 22, 2.4, 3.6, () => "#0A1029"); x.fillStyle = "#FFF1E8"; x.fillRect(ex - 1, 20, 1, 1); }
+    x.fillStyle = "#4A1438"; for (let i = 29; i <= 39; i++) x.fillRect(i, 29 + Math.round(Math.pow((i - 34) / 5, 2) * -1.5 + 1.5) - 1, 1, 1);
+    disc(25, 27, 2.5, 1.5, () => "#FF77A8"); disc(43, 27, 2.5, 1.5, () => "#FF77A8");
+    // the round yellow dog: floppy ears, big eyes, a muzzle and a shiny nose
+    const yel = shaded("#FFC20E", "#FFE066", "#D99A00", "#4A3200");
+    disc(76, 26, 4.5, 8, shaded("#D99A00", "#FFC20E", "#AB7400", "#4A3200"));
+    disc(108, 26, 4.5, 8, shaded("#D99A00", "#FFC20E", "#AB7400", "#4A3200"));
+    disc(92, 30, 17, 16, yel);
+    for (const ex of [85, 99]) { disc(ex, 25, 4.2, 4.6, (u, v, d) => d > 0.7 ? "#4A3200" : "#FFF1E8"); disc(ex + 0.5, 26, 2, 2.4, () => "#0A1029"); x.fillStyle = "#FFFFFF"; x.fillRect(ex, 24, 1, 1); }
+    disc(88, 36, 5.5, 4.2, (u, v, d) => d > 0.8 ? "#D99A00" : "#FFE9A0");
+    disc(96, 36, 5.5, 4.2, (u, v, d) => d > 0.8 ? "#D99A00" : "#FFE9A0");
+    disc(92, 32, 3.4, 2.4, () => "#0A1029"); x.fillStyle = "#83769C"; x.fillRect(91, 31, 1, 1);
+    x.fillStyle = "#4A3200"; x.fillRect(92, 34, 1, 4); for (let i = 86; i <= 98; i++) if (Math.abs(i - 92) > 1) x.fillRect(i, 40 - (Math.abs(i - 92) > 4 ? 1 : 0), 1, 1);
+    const py = frame ? 12 : 18;                                             // a waving arm and paw
+    for (let k = 0; k <= 8; k++) disc(106 + k * 1.2, 40 - k * (40 - py) / 8, 2.6, 2.6, yel);
+    disc(116, py, 4, 4, yel);
+    // the water over their laps
+    for (let j = 52; j < 58; j++) for (let i = 4; i < 124; i++) { x.globalAlpha = 0.6; x.fillStyle = j === 52 ? "#9FE8FF" : "#29ADFF"; x.fillRect(i, j, 1, 1); }
+    x.globalAlpha = 1;
+    // the tub: planks, a rim, and two metal bands
+    for (let j = 56; j < TH; j++) for (let i = 2; i < 126; i++) {
+      const plank = Math.floor((i - 2) / 9), gap = (i - 2) % 9 === 0, t = (i - 64) / 62;
+      x.fillStyle = gap ? "#5A2410" : t > 0.55 ? "#7A3A20" : plank % 2 ? "#AB5236" : "#C2683F";
+      if (!gap && hash(i, j >> 2, plank) > 0.92) x.fillStyle = "#8A4428";
+      x.fillRect(i, j, 1, 1);
     }
-    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) if (i * i + j * j <= 4) px(22 + i, 26 + j, "#FFF1E8");
-    px(22, 26, "#0A1029"); px(23, 26, "#0A1029");
+    x.fillStyle = "#E08850"; x.fillRect(0, 54, TW, 3); x.fillStyle = "#FFCCAA"; x.fillRect(0, 54, TW, 1); x.fillStyle = "#5A2410"; x.fillRect(0, 57, TW, 1);
+    for (const by of [66, 79]) { x.fillStyle = "#5F574F"; x.fillRect(2, by, 124, 3); x.fillStyle = "#C2C3C7"; x.fillRect(2, by, 124, 1); for (let i = 8; i < 126; i += 20) { x.fillStyle = "#FFF1E8"; x.fillRect(i, by + 1, 1, 1); } }
+    x.fillStyle = "#3A1A0A"; x.fillRect(2, TH - 1, 124, 1);
     return c;
-  }
-  const WHALE = renderWhale();
-  // The hot tub at the end of everything: a pink cosmic guy and his round yellow dog buddy.
-  // (Homage art, deliberately unnamed. Swap these sprites to change the cast.)
-  const KPAL = { P: "#D94FA0", L: "#FF9ED6", K: "#0A1029", W: "#FFF1E8" };
-  const KEEPER = [
-    sprite([
-      ".......LLLLLL.......",
-      "......LPPPPPPL......",
-      ".....LPPPPPPPPL.....",
-      ".....LPPKPPKPPL.....",
-      ".....LPPKPPKPPL...LL",
-      ".....LPPPPPPPPL..LPL",
-      ".....LPPKKKKPPL.LPL.",
-      "......LPPPPPPL.LPL..",
-      ".......LPPPPL.LPL...",
-      ".....LLPPPPPPLPL....",
-      "...LLPPPPPPPPPPL....",
-      "..LPPPPPPPPPPPPL....",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-    ], KPAL),
-    sprite([
-      ".......LLLLLL.......",
-      "......LPPPPPPL......",
-      ".....LPPPPPPPPL.....",
-      ".....LPPKPPKPPL.....",
-      ".....LPPKPPKPPL.....",
-      ".....LPPPPPPPPL...LL",
-      ".....LPPKKKKPPL..LPL",
-      "......LPPPPPPL..LPL.",
-      ".......LPPPPL..LPL..",
-      ".....LLPPPPPPLLPL...",
-      "...LLPPPPPPPPPPL....",
-      "..LPPPPPPPPPPPPL....",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-      ".LPPPPPPPPPPPPPPL...",
-    ], KPAL),
-  ];
-  const DPAL = { K: "#0A1029", Y: "#FFC20E", D: "#D99A00", W: "#FFF1E8" };
-  const DOGHEAD = sprite([
-    "......KKKKKK......",
-    "....KKYYYYYYKK....",
-    "...KYYYYYYYYYYK...",
-    "..KYYYYYYYYYYYYK..",
-    ".KYKKKYYYYYYKKKYK.",
-    ".KKWWWKYYYYKWWWKK.",
-    ".KKWWWKYYYYKWWWKK.",
-    ".KYKKKDYYYYDKKKYK.",
-    "KYYYYDYKKKKYDYYYYK",
-    "KYYYYDYKKKKYDYYYYK",
-    "KYYYDYKYYYYKYDYYYK",
-    "KYYYDYKYYYYKYDYYYK",
-    "KYYDYYKYYYYKYYDYYK",
-    ".KYDYKYYYYYYKYDYK.",
-    "..KDYKYYYYYYKYDK..",
-    "...KKKYYYYYYKKK...",
-    ".....KKKKKKKK.....",
-  ], DPAL);
-  const PAW = sprite([".KK.", "KYYK", "KYYK", ".KK."], DPAL);
+  });
+  const [TUBC, tubx] = off(TW, TH);
   function renderTubScene(frame, now) {
-    const [c, x] = off(64, 44);
-    x.drawImage(KEEPER[frame], 4, 2);
-    x.drawImage(DOGHEAD, 40, 0);
-    x.drawImage(PAW, 58, frame ? 1 : 6);
-    // the water line over their lower halves, so they're sitting in it
-    x.fillStyle = "rgba(41,173,255,.55)"; x.fillRect(3, 17, 58, 3);
-    x.fillStyle = "#3FE0D0";
-    for (let i = 3; i < 61; i++) if ((i + Math.floor(now / 160)) % 4 < 2) x.fillRect(i, 16, 1, 1);
-    // bubbles
-    x.fillStyle = "#FFF1E8";
-    for (let k = 0; k < 8; k++) { const bx = 5 + ((k * 13 + Math.floor(now / 90)) % 54); const by = 19 - ((Math.floor(now / 120) + k * 3) % 4); x.fillRect(bx, by, 1, 1); }
-    // tub: wooden planks
-    x.fillStyle = "#AB5236"; x.fillRect(1, 20, 62, 22);
-    x.fillStyle = "#7A3A20"; for (let i = 1; i < 63; i += 6) x.fillRect(i, 20, 1, 22);
-    x.fillStyle = "#E08850"; x.fillRect(0, 19, 64, 2);
-    x.fillStyle = "#5F3A20"; x.fillRect(1, 41, 62, 1);
-    // steam
-    x.fillStyle = "rgba(255,241,232,.55)";
-    for (let k = 0; k < 7; k++) { const sx = 8 + k * 8 + Math.round(Math.sin(now / 400 + k) * 1.5); const sy = 15 - ((Math.floor(now / 140) + k * 4) % 15); x.fillRect(sx, sy, 1, 1); }
-    return c;
+    tubx.clearRect(0, 0, TW, TH); tubx.drawImage(TUB[frame], 0, 0);
+    tubx.fillStyle = "#3FE0D0";
+    for (let i = 6; i < 122; i += 2) if (((i >> 1) + Math.floor(now / 160)) % 4 < 2) tubx.fillRect(i, 52, 2, 1);    // ripples
+    tubx.fillStyle = "#FFF1E8";
+    for (let k = 0; k < 10; k++) { const bx = 8 + ((k * 23 + Math.floor(now / 70)) % 112), by = 56 - ((Math.floor(now / 110) + k * 3) % 7); tubx.fillRect(bx, by, 1 + (k % 3 === 0), 1 + (k % 3 === 0)); }
+    tubx.globalAlpha = 0.5;
+    for (let k = 0; k < 9; k++) { const sx = 10 + k * 13 + Math.round(Math.sin(now / 400 + k) * 2), sy = 50 - ((Math.floor(now / 120) + k * 5) % 22); tubx.fillRect(sx, sy, 2, 2); }
+    tubx.globalAlpha = 1;
+    return TUBC;
   }
-  const MOON = renderMoon(34);
-  const GIANT = renderPlanet(PLANETS.jupiter, 46);
-  const KEPLER = renderPlanet(PLANETS.kepler, 40);
-  const MARS = renderPlanet(PLANETS.mars, 30);
+  const MOON = renderMoon(68);
+  const GIANT = renderPlanet(PLANETS.jupiter, 92);
+  const KEPLER = renderPlanet(PLANETS.kepler, 80);
+  const MARS = renderPlanet(PLANETS.mars, 62);
   // A nebula: soft clouds of pink, purple, and blue, with newborn stars.
   const NEBULA = (() => {
-    const [c, x] = off(96, 60);
-    for (let j = 0; j < 60; j++) for (let i = 0; i < 96; i++) {
-      const u = (i - 48) / 48, v = (j - 30) / 30, fall = 1 - (u * u + v * v);
-      const n = fbm(i / 14, j / 14, 21) * fall;
-      if (n < 0.18) continue;
-      x.fillStyle = n > 0.42 ? "#FFF1E8" : n > 0.33 ? "#FF77A8" : n > 0.25 ? "#7E2553" : "#3E2E85";
-      x.globalAlpha = n > 0.25 ? 0.95 : 0.7; x.fillRect(i, j, 1, 1);
+    const NW = 168, NH = 104, [c, x] = off(NW, NH);
+    const COLS = ["#1D2B53", "#3E2E85", "#7E2553", "#BE3A84", "#FF77A8", "#FFCCAA", "#FFF1E8"];
+    for (let j = 0; j < NH; j++) for (let i = 0; i < NW; i++) {
+      const u = (i - NW / 2) / (NW / 2), v = (j - NH / 2) / (NH / 2), fall = 1 - (u * u + v * v);
+      if (fall <= 0) continue;
+      let n = fbm(i / 22, j / 22, 21) * Math.sqrt(fall) * 1.5;
+      const lane = Math.abs(fbm(i / 30 + 7, j / 30, 23) - 0.5);                 // dark dust lanes
+      if (lane < 0.05) n -= 0.12;
+      const blue = fbm(i / 18 + 3, j / 18 + 5, 24) * fall;
+      const t = n * COLS.length + (bay(i, j) - 0.5) * 0.9 - 1.6;
+      if (t < 0) { if (blue > 0.32 && bay(i, j) < 0.5) { x.fillStyle = "#29ADFF"; x.globalAlpha = 0.55; x.fillRect(i, j, 1, 1); x.globalAlpha = 1; } continue; }
+      x.globalAlpha = t < 1 ? 0.7 : 1;
+      x.fillStyle = COLS[Math.min(COLS.length - 1, Math.floor(t))]; x.fillRect(i, j, 1, 1);
     }
-    x.globalAlpha = 1; x.fillStyle = "#FFF1E8";
-    for (let k = 0; k < 14; k++) x.fillRect(Math.floor(20 + hash(k, 1, 22) * 56), Math.floor(12 + hash(k, 2, 22) * 36), 1, 1);
+    x.globalAlpha = 1;
+    for (let k = 0; k < 9; k++) {                                              // newborn stars with little sparkles
+      const sx = Math.floor(30 + hash(k, 1, 22) * 108), sy = Math.floor(18 + hash(k, 2, 22) * 68), big = k < 3;
+      x.fillStyle = "#FFF1E8"; x.fillRect(sx, sy, 1, 1);
+      if (big) { x.fillStyle = "#FFCCAA"; x.fillRect(sx - 2, sy, 2, 1); x.fillRect(sx + 1, sy, 2, 1); x.fillRect(sx, sy - 2, 1, 2); x.fillRect(sx, sy + 1, 1, 2); }
+    }
     return c;
   })();
-  const ROCKS = Array.from({ length: 14 }, (_, k) => ({ img: rock(k + 1, 3 + Math.floor(hash(k, 9, 2) * 6)), x: hash(k, 5, 3) * W, d: hash(k, 6, 3) * 70, spin: hash(k, 7, 3) }));
+  // A supernova: a white-hot core, long star spikes, and a clumpy shell of fire rushing outward.
+  const NOVA = Array.from({ length: 8 }, (_, f) => {
+    const N = 96, h = N / 2, [c, x] = off(N, N), ph = f / 8;
+    const shellR = 0.42 + ph * 0.5;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const dx = (i - h + 0.5) / h, dy = (j - h + 0.5) / h, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), b = bay(i, j);
+      let g = Math.exp(-r * 5.5) * (1.05 + 0.15 * Math.sin(ph * Math.PI * 2));   // the glow
+      if (Math.abs(dx) < 0.025 || Math.abs(dy) < 0.025) g = Math.max(g, (1 - r * 1.15) * 0.85);   // long spikes
+      if (Math.abs(Math.abs(dx) - Math.abs(dy)) < 0.025) g = Math.max(g, (1 - r * 2.6) * 0.7);   // short ones
+      const clump = noise(Math.cos(a) * 3 + f * 0.2, Math.sin(a) * 3, 5);
+      const sd = Math.abs(r - shellR - (clump - 0.5) * 0.1);
+      const shell = sd < 0.05 * (0.6 + clump) ? (1 - ph) * (0.6 + clump * 0.6) : 0;
+      let col = null;
+      const t = g + (b - 0.5) * 0.08;
+      if (t > 0.62) col = "#FFFFFF"; else if (t > 0.4) col = "#FFF1E8"; else if (t > 0.24) col = "#FFEC27"; else if (t > 0.13) col = "#FFA300"; else if (t > 0.07 && b < 0.6) col = "#FF004D"; else if (t > 0.035 && b < 0.3) col = "#7E2553";
+      if (!col && shell > 0.15 + b * 0.5) col = shell > 0.75 ? "#FFEC27" : shell > 0.5 ? "#FFA300" : clump > 0.55 ? "#FF77A8" : "#FF004D";
+      if (col) { x.fillStyle = col; x.fillRect(i, j, 1, 1); }
+    }
+    for (let k = 0; k < 14; k++) {                                             // bits of debris flying out
+      const a = hash(k, 1, 9) * 6.28, rr = (0.3 + hash(k, 2, 9) * 0.3 + ph * 0.55) * h;
+      if (rr > h - 2) continue;
+      x.fillStyle = k % 2 ? "#FFEC27" : "#FFA300"; x.fillRect(Math.round(h + Math.cos(a) * rr), Math.round(h + Math.sin(a) * rr), 1, 1);
+    }
+    return c;
+  });
+  const ROCKS = Array.from({ length: 14 }, (_, k) => ({ img: rock(k + 1, 6 + Math.floor(hash(k, 9, 2) * 12)), x: hash(k, 5, 3) * W, d: hash(k, 6, 3) * 70, spin: hash(k, 7, 3) }));
 
   // ---------- The journey, in 3D: the camera flies backward away from home ----------
   // World: home planet at z = 0. The camera sits at z = cz, looking back at it.
@@ -2023,7 +2067,7 @@
   });
   const ROCKBELT = Array.from({ length: 22 }, (_, i) => ({ img: ROCKS[i % ROCKS.length].img, a: hash(i, 8, 5) * Math.PI * 2, r: 0.35 + hash(i, 9, 5) * 0.9, dz: (hash(i, 10, 5) - 0.5) * 160 }));
 
-  let planetKey = "earth", planetImg = renderPlanet(PLANETS[planetKey], 120);
+  let planetKey = "earth", planetImg = renderPlanet(PLANETS[planetKey], 200);
   // at: the stop you're parked at (-1 = home). fly: the flight in progress, or null.
   let score = 1000, at = -1, fly = null, hopCb = null, hopTimer = 0, arrived = true, shown = new Set();
   let trav = 0, speed = 4, lastNow = 0, sputterAt = -1e9, swayX = 0, swayY = 0;
@@ -2097,7 +2141,7 @@
     nebula: ["SHH... BABY STARS", "*TWINKLE*", "A STAR IS BORN"], nova: ["KA-BOOOM!", "DO IT AGAIN!", "BOOM BOOM!"],
     hole: ["DON'T LOOK DOWN", "SLUUURP", "NOM NOM STARS"],
   };
-  const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, nebula: 0.9, sats: 0.5, nova: 0.55 };
+  const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, nebula: 0.9, sats: 0.72, nova: 0.55 };
   let greet = null;   // { st, at, line, poke }
   function stopCenter(st) {
     if (st.key === "rocks") return [0, 0];
@@ -2153,7 +2197,7 @@
     const { S, s, cx, cy, g, jump, ratio } = heroAt(st, zoff, now), [x0, y0] = stopCenter(st), z = st.z;
     if (st.key === "whale") {
       const scene = renderTubScene(Math.floor(now / 260) % 2, now);
-      const k = Math.min(W * 0.8, 140 * ratio) / scene.width;
+      const k = Math.min(W * 0.84, 150 * ratio) / scene.width;
       ctx.drawImage(scene, Math.round(cx - scene.width * k / 2), Math.round(cy - scene.height * k / 2), Math.round(scene.width * k), Math.round(scene.height * k));
       return;
     }
@@ -2167,7 +2211,7 @@
         const blink = (now + i * 900) % 2600 < 140 ? 1 : 0, wave = Math.floor(tt * 4 + i) % 2 ? 2 : 0;
         drawSprite(ALIEN[blink + wave], x0 + ax * S, y0 - (0.06 + 0.32 * up + bob) * S, z, S * 0.3);
       });
-      drawSprite(UFO, x0, y0 + Math.sin(tt * 2.5) * 0.03 * S, z, S);
+      drawSprite(UFOS[Math.floor(tt * 4) % 2], x0, y0 + Math.sin(tt * 2.5) * 0.03 * S, z, S);
       // floating hearts
       if (g && now - g.at > 600) for (let k = 0; k < 3; k++) {
         const ph = ((now - g.at) / 1400 + k / 3) % 1;
@@ -2212,7 +2256,7 @@
     const tt = now / 1000;
     const R = st.off * st.u, x = Math.cos(st.ang) * R, y = Math.sin(st.ang) * R, z = st.z;
     const S = st.size * st.u;
-    if (st.key === "sats") { drawSprite(SAT, x, y, z, S); drawSprite(SAT, -x * 0.6, -y * 1.3, z * 0.8, S * 0.8); }
+    if (st.key === "sats") drawSprite(SATS[Math.floor(tt * 2) % 2], x, y, z, S);
     if (st.key === "rocks") for (const r of ROCKBELT) {
       const a = r.a + tt * 0.15, rr = r.r * st.u;
       drawSprite(r.img, Math.cos(a) * rr, Math.sin(a) * rr * 0.75, z + r.dz, st.u * (0.12 + r.r * 0.1));
@@ -2222,21 +2266,7 @@
     if (st.key === "giant") drawSprite(GIANT, x, y, z, S);
     if (st.key === "mars") drawSprite(MARS, x, y, z, S);
     if (st.key === "nebula") drawSprite(NEBULA, x, y, z, S);
-    if (st.key === "nova") {
-      // A star blowing up: a white-hot core and rings rippling out.
-      const q = proj(x, y, z); if (!q) return;
-      const rad = S * q.s / 2; if (rad > 500 || rad < 1) return;
-      const ph = (tt * 0.8) % 1;
-      for (let k = 0; k < 3; k++) {
-        const rr = Math.round(rad * (((ph + k / 3) % 1) * 0.9 + 0.1)), w = Math.max(1, Math.round(rad / 14));
-        ctx.fillStyle = ["#FFEC27", "#FFA300", "#FF004D"][k];
-        ctx.fillRect(Math.round(q.x - rr), Math.round(q.y - w / 2), rr * 2, w);
-        ctx.fillRect(Math.round(q.x - w / 2), Math.round(q.y - rr), w, rr * 2);
-        const d = Math.round(rr * 0.7); ctx.fillRect(Math.round(q.x - d), Math.round(q.y - d), w, w); ctx.fillRect(Math.round(q.x + d), Math.round(q.y - d), w, w);
-        ctx.fillRect(Math.round(q.x - d), Math.round(q.y + d), w, w); ctx.fillRect(Math.round(q.x + d), Math.round(q.y + d), w, w);
-      }
-      const c = Math.max(1, Math.round(rad * 0.22)); ctx.fillStyle = "#FFF1E8"; ctx.fillRect(Math.round(q.x - c), Math.round(q.y - c), c * 2, c * 2);
-    }
+    if (st.key === "nova") drawSprite(NOVA[Math.floor(tt * 7) % NOVA.length], x, y, z, S * 1.5);
     if (st.key === "ufo") {
       const wob = Math.sin(tt * 2.5) * 0.08 * st.u;
       drawSprite(UFO, x + wob, y, z, S);
@@ -2372,6 +2402,7 @@
   const stageEl = document.getElementById("stage");
   function frame(now) {
     if (!stageEl.offsetParent) { lastNow = now; raf = requestAnimationFrame(frame); return; }
+    ctx.setTransform(SC, 0, 0, SC, 0, 0); ctx.imageSmoothingEnabled = false;
     const dt = Math.min(0.05, Math.max(0, (now - (lastNow || now)) / 1000)); lastNow = now;
     const tt = now / 1000;
     swayX = Math.sin(tt * 0.45) * 7; swayY = Math.cos(tt * 0.33) * 4;
@@ -2413,7 +2444,7 @@
       if (x < -6 || x > W + 6 || y < -6 || y > H + 6) continue;
       ctx.globalAlpha = dim;
       ctx.fillStyle = d < 60 ? "#FFF1E8" : d < 180 ? (s.hue > 0.7 ? "#FF77A8" : "#9EA9D4") : "#3E4A80";
-      ctx.fillRect(Math.round(x), Math.round(y), d < 35 ? 2 : 1, d < 35 ? 2 : 1);
+      const ss = d < 35 ? 2 : d < 150 ? 1 : 0.5; ctx.fillRect(Math.round(x * 2) / 2, Math.round(y * 2) / 2, ss, ss);
       if (trail > 3 && d < 240) {
         const q2 = F / (d + trail), x2 = CX + (s.x - swayX * 0.4) * q2, y2 = WIN_CY + (s.y - swayY * 0.4) * q2;
         const n = Math.min(10, Math.ceil(Math.hypot(x - x2, y - y2)));
@@ -2668,7 +2699,7 @@
   // ---------- API used by the game ----------
   let doneCb = null, hopAt = 0;
   const setPlanet = (key) => {
-    if (planetKey !== key) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 120); }
+    if (planetKey !== key) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 200); }
     $("planet-name").textContent = PLANETS[planetKey].name;
   };
   function clearAll() {
