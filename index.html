@@ -1934,6 +1934,59 @@
         const u = (i + 0.5 - cx) / rx, v = (j + 0.5 - cy) / ry, d = u * u + v * v; if (d <= 1) { const cc = typeof col === "function" ? col(u, v, d, i, j) : col; if (cc) { x.fillStyle = cc; x.fillRect(i, j, 1, 1); } } } };
     return { P, fill, line, disc };
   }
+  // Pixel grids: each cell is 2x2 canvas pixels, placed by its top-left corner in design units.
+  function cells(x, rows, pal, x0, y0) {
+    const ox = Math.round(x0 * ZR), oy = Math.round(y0 * ZR);
+    rows.forEach((r, j) => [...r].forEach((ch, i) => { if (pal[ch]) { x.fillStyle = pal[ch]; x.fillRect(ox + i * 2, oy + j * 2, 2, 2); } }));
+  }
+  const PRISMO = [
+    "......PP.PP.........",
+    "....PPPPPPPPP.......",
+    "..PPPPPPPPPPPP......",
+    ".PPPPPPPPPPPPPP.....",
+    "PPPPPPPPPPPPPPPP....",
+    ".PPPPPPPPPPEEEPPP...",
+    "PPPPPPPPPPECCEPPPP..",
+    ".PPPPPPPPPECCEPPPPP.",
+    "PPPPPPPPPPPEEPPPPPPP",
+    ".PPPPPPPPPPPPPPPPPP.",
+    "PPPPPPPPPPPPPPPPP...",
+    ".PPPPPPPPPMMMMMMP...",
+    "..PPPPPPPPPPPPP.....",
+    "...PPPPPPPPPPP......",
+    ".....PPPPPPPP.......",
+    "......PPPPP.........",
+    "......PPPPP.........",
+    "......PPPPP.........",
+    "......PPPPP.........",
+    "..PPPPPPPPPPPPP.....",
+    ".PPPPPPPPPPPPPPP....",
+    "PPPPPPPPPPPPPPPPP...",
+  ];
+  // The round yellow dog's head, cell for cell from the reference pixel art.
+  const JAKE = [
+    ".......KKKKKKK.......",
+    ".....KKYYYYYYYKK.....",
+    "....KYYYYYYYYYYYK....",
+    "...KYYYYYYYYYYYYYK...",
+    "..KYYYYYYYYYYYYYYYK..",
+    ".KYYYKKYYYYYYYKKYYYK.",
+    ".KYYKWWKYYYYYKWWKYYK.",
+    "KYYKWWWWKYYYKWWWWKYYK",
+    "KYYKWWWWKKKKKWWWWKYYK",
+    "KYYKKWWKYYYYYKWWKKYYK",
+    "KYYYKKKYYYYYYYKKKYYYK",
+    "KYYKYKYYYKKKYYYKYKYYK",
+    "KYYKYKYYYKKKYYYKYKYYK",
+    ".KKYYKYYKYYYKYYKYYKK.",
+    "..KYYKYYKKKKKYYKYYK..",
+    "..KYYKYYKYYYKYYKYYK..",
+    "..KYYYKKYYYYYKKYYYK..",
+    "...KYYYYYYYYYYYYYK...",
+    "....KKYYYYYYYYYKK....",
+    "......KKKKKKKKK......",
+  ];
+  const JPAL = { K: "#0A0A0A", Y: "#F9B233", W: "#FFFFFF", D: "#3A0A0A", T: "#FF77A8" };
   // Layer 1: the room, the tub's far side, and the pink guy (they don't move).
   const ROOM_BACK = (() => {
     const [c, x] = off(TW, TH), { P, fill, line, disc } = painter(x);
@@ -1947,17 +2000,9 @@
     for (const [a, b] of [[Lt, Bt], [Bt, Rt], [Lt, L], [Rt, R], [L, Fr], [Fr, R]]) line(a[0], a[1], b[0], b[1], "#C27A12", 3);
     for (const [a, b] of [[Lt, Bt], [Bt, Rt], [Lt, L], [Rt, R], [L, Fr], [Fr, R]]) line(a[0], a[1], b[0], b[1], "#FFC94A", 1);
     disc(75, 85, 42, 7, (u, v, d) => d > 0.8 ? "#C2683F" : "#1E6FBF");          // the tub's far rim and the water
-    // The pink cosmic guy: a flat salmon-pink silhouette in profile, facing right. Bumpy cauliflower back of
-    // the head, a big beak of a nose, an almond eye with a cyan iris, a long thin mouth, a skinny neck.
-    const PK = "#F18E8E";
-    disc(49, 84, 14, 6.5, PK);                                                  // shoulders
-    fill([[46.5, 66], [52, 66], [52, 82], [46.5, 82]], PK);                      // neck
-    disc(49.5, 56.5, 10, 10.5, PK);                                             // the head
-    for (let k = 0; k <= 9; k++) { const ang = (95 + k * 21) * Math.PI / 180; disc(48.5 + Math.cos(ang) * 11.6, 56.5 - Math.sin(ang) * 11.6, 3.5, 3.5, PK); }   // the scalloped cauliflower edge
-    fill([[56, 47.5], [64, 51.5], [73, 59], [62, 61.5], [56, 62]], PK);          // the nose, a thick beak
-    disc(56.6, 54.2, 4.4, 2.8, "#FFF2A6");                                      // the eye
-    disc(57.6, 54.3, 2, 2, "#4FC3F7");
-    line(57, 63.5, 66, 62.5, "#FFF2A6");                                        // the mouth
+    // The pink cosmic guy, as a pixel grid: a flat salmon-pink silhouette in profile facing right, with a bumpy
+    // cauliflower back of the head, a beak of a nose, a pale almond eye with a cyan iris, a thin mouth, a skinny neck.
+    cells(x, PRISMO, { P: "#F18E8E", E: "#FFF2A6", C: "#4FC3F7", M: "#FFF2A6" }, 34, 54);
     return c;
   })();
   // Layer 3: the water over everyone's laps and the front of the tub.
@@ -1977,45 +2022,35 @@
   function renderTubScene(frame, now) {
     const { P, fill, line, disc } = jake, t = (now / 1000) % 4.6;
     tubx.clearRect(0, 0, TW, TH); tubx.drawImage(ROOM_BACK, 0, 0);
-    // The round yellow dog: a wide dome of a head, huge eyes close together at the top, a black nose right
-    // under them, two big droopy jowls with his mouth beneath, and darker floppy ears.
-    const JY = "#F7B731", JL = "#FFD45C", JD = "#E3951F", JO = "#5A3200", JE = "#D9862A", jx = 97, jy = 66;
+    // The round yellow dog, from the reference grid. His mouth opens to catch the pickle and works while he chews.
+    const JY = "#F9B233", JO = "#0A0A0A", jx = 97, jy = 66;
     const tossing = t < 1.3, chewing = t >= 1.3 && t < 2.3, waving = t >= 2.3 && t < 3.9;
-    const skin = (u, v, d) => d > 0.88 ? JO : (u < -0.35 && v < -0.35 && d < 0.6) ? JL : (v > 0.55 || u > 0.7) ? JD : JY;
-    disc(jx - 13.5, jy, 3.6, 9.5, (u, v, d) => d > 0.7 ? JO : JE);               // floppy ears, behind the head
-    disc(jx + 13.5, jy, 3.6, 9.5, (u, v, d) => d > 0.7 ? JO : JE);
-    disc(jx, jy + 16, 17, 10, skin);                                             // body (under the water)
-    disc(jx, jy, 15, 13, skin);                                                  // the head
-    const look = tossing && t > 0.3 && t < 1.0 ? -1.2 : 0;                       // eyes follow the pickle
-    for (const ex of [jx - 6, jx + 6]) {
-      disc(ex, jy - 6.5, 5.8, 5.8, (u, v, d) => d > 0.68 ? "#0A1029" : "#FFFFFF");
-      disc(ex + (ex < jx ? 0.8 : -0.8), jy - 6 + look, 1.5, 1.6, "#0A1029");
-    }
-    const puff = chewing ? 0.8 : 0;
-    const jowl = (u, v, d) => d > 0.72 && v > -0.45 ? JO : JY;
-    disc(jx - 3.6, jy + 3.2, 4.6 + puff, 3.8 + puff, jowl);                      // jowls (puffed while chewing)
-    disc(jx + 3.6, jy + 3.2, 4.6 + puff, 3.8 + puff, jowl);
-    disc(jx, jy - 0.2, 2.8, 2, "#0A1029"); P(jx - 1, jy - 1, "#FFFFFF");          // the nose
-    const open = tossing && t > 0.75;
-    if (open) disc(jx, jy + 8.4, 3.4, 2.8, (u, v) => v > 0.25 ? "#FF77A8" : "#3A0A0A");
-    else if (chewing) { if (Math.floor(now / 140) % 2) line(jx - 2.5, jy + 7.8, jx + 2.5, jy + 7.8, "#3A0A0A"); else line(jx - 1.5, jy + 8, jx + 1.5, jy + 8, "#3A0A0A"); }
-    else line(jx - 1.5, jy + 7.6, jx + 1.5, jy + 7.6, "#3A0A0A");
+    const open = tossing && t > 0.75, chomp = chewing && Math.floor(now / 140) % 2;
+    const head = JAKE.map((r, j) => {
+      if (open && j === 14) return r.slice(0, 9) + "DDD" + r.slice(12);
+      if (open && j === 15) return r.slice(0, 9) + "DTD" + r.slice(12);
+      if (chomp && j === 15) return r.slice(0, 9) + "KKK" + r.slice(12);
+      return r;
+    });
+    const hx = jx - 21 * 0.75, hy = jy - 15;                                   // grid cells are 1.5 design units
+    cells(tubx, ["KYYYYYYYYYYYYYYYYYYYYYK", "KYYYYYYYYYYYYYYYYYYYYYK", "KYYYYYYYYYYYYYYYYYYYYYK", "KYYYYYYYYYYYYYYYYYYYYYK"], JPAL, hx - 1.5, hy + 25);   // his body, down into the water
+    cells(tubx, head, JPAL, hx, hy);
     // the pickle jar in his left paw
     const jxx = jx - 21, jyy = jy + 9;
-    line(jx - 12, jy + 14, jxx + 5, jyy + 6, JY, 2.2);
+    line(jx - 13, jy + 16, jxx + 5, jyy + 6, JO, 3.2); line(jx - 13, jy + 16, jxx + 5, jyy + 6, JY, 1.6);
     fill([[jxx, jyy], [jxx + 8, jyy], [jxx + 8, jyy + 11], [jxx, jyy + 11]], "#6FD36A");
     fill([[jxx, jyy - 2.5], [jxx + 8, jyy - 2.5], [jxx + 8, jyy], [jxx, jyy]], "#C2C3C7"); line(jxx, jyy - 2.5, jxx + 8, jyy - 2.5, "#FFF1E8");
     line(jxx + 1.5, jyy + 1.5, jxx + 1.5, jyy + 5, "#C8F7B8"); P(jxx + 4, jyy + 5, "#2E8C3E"); P(jxx + 6, jyy + 8, "#2E8C3E"); P(jxx + 3, jyy + 9, "#2E8C3E");
-    disc(jxx + 5, jyy + 6.5, 2.6, 2.6, (u, v, d) => d > 0.6 ? JO : JY);
+    disc(jxx + 5, jyy + 6.5, 2.6, 2.6, (u, v, d) => d > 0.55 ? JO : JY);
     // the pickle flies: up out of the jar, over his head, and down into his mouth
     if (tossing && t > 0.15) {
       const k = Math.min(1, (t - 0.15) / 0.95), sx = jxx + 4, sy = jyy - 4, ex = jx, ey = jy + 8;
       const px = sx + (ex - sx) * k, py = sy + (ey - sy) * k - Math.sin(k * Math.PI) * 34;
       if (k < 0.97) { const a = k * 9; disc(px, py, 1.6, 3.4, (u, v, d) => { const rr = u * Math.cos(a) - v * Math.sin(a); return d > 0.7 ? "#2E8C3E" : rr < -0.2 ? "#9BEA7C" : "#5FCB4A"; }); }
     }
-    if (chewing && Math.floor(now / 160) % 2 === 0) P(jx + 8, jy + 7, "#7CE36A");
+    if (chewing && Math.floor(now / 160) % 2 === 0) P(jx + 6, jy + 9, "#7CE36A");
     // the other arm: it waves after the snack
-    if (waving) { const up = Math.floor(now / 220) % 2; line(jx + 13, jy + 12, jx + 20, jy - 6 - up * 4, JY, 2.2); disc(jx + 20 + up * 0.5, jy - 7 - up * 4, 2.6, 2.6, (u, v, d) => d > 0.65 ? JO : JY); }
+    if (waving) { const up = Math.floor(now / 220) % 2, ex = jx + 22, ey = jy - 8 - up * 4; line(jx + 14, jy + 14, ex, ey, JO, 3.2); line(jx + 14, jy + 14, ex, ey, JY, 1.6); disc(ex + up * 0.5, ey - 1, 2.6, 2.6, (u, v, d) => d > 0.55 ? JO : JY); }
     tubx.drawImage(ROOM_FRONT, 0, 0);
     const { P: Q } = jake;
     for (let k = 0; k < 8; k++) Q(38 + ((k * 23 + Math.floor(now / 70)) % 76), 86 - ((Math.floor(now / 110) + k * 3) % 5), "#FFF1E8");
