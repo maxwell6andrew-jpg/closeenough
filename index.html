@@ -626,13 +626,16 @@
 
   // ---------- Score: tighter pays more ----------
   const span = (r) => r.max - r.min;
-  const normWidth = (r, lo, hi) => (hi - lo) * 100 / span(r);
+  // How wide a range a reasonably informed person would guess in. Some questions set it
+  // tighter than the dial (everyone knows the iPhone came out around 2005-2010).
+  const scaleOf = (r) => r.scale || span(r);
+  const normWidth = (r, lo, hi) => (hi - lo) * 100 / scaleOf(r);
   // Base points per round, 0-100. w is the full window as a % of the scale.
   // Nobody hits it on the nose, so anything within ±3% of the scale is a full 100.
   // On a 0-100 scale: ±3 100 · ±5 91 · ±10 70 · ±20 37 · ±30 15 · ±40 3 · miss 0.
   // On tiny scales (0-12 hours) the tightest window is ±1, so that counts as full points instead.
   function pointsFor(w, R) {
-    const half = w / 2, full = Math.max(3, R ? 100 / span(R) : 0);
+    const half = w / 2, full = Math.max(3, R ? 100 / scaleOf(R) : 0);
     if (half <= full + 1e-9) return 100;
     return Math.max(1, Math.round(100 * Math.pow(Math.max(0, (50 - half) / (50 - full)), 2.2)));
   }
@@ -682,7 +685,22 @@
       g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
       o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
     } catch (e) {}
+  }  // Filtered noise: the boom of a little explosion, the clatter of a crash.
+  let noiseBuf = null;
+  function noise(when, dur, f0, f1, vol) {
+    if (!soundOn) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      if (!noiseBuf) { noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1; }
+      const t = ac.currentTime + when, src = ac.createBufferSource(), flt = ac.createBiquadFilter(), g = ac.createGain();
+      src.buffer = noiseBuf; src.loop = true; flt.type = "lowpass";
+      flt.frequency.setValueAtTime(f0, t); flt.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(flt).connect(g).connect(ac.destination); src.start(t); src.stop(t + dur + 0.05);
+    } catch (e) {}
   }
+
   const sfx = {
     start: () => [392, 523, 659, 784].forEach((f, i) => tone(f, 0.08, i * 0.08)),
     drag: (k = 0.5) => { const now = performance.now(); if (now - (sfx._last || 0) < 30) return; sfx._last = now; tone(220 + k * 440, 0.025, 0, "square", 0.022); },
@@ -702,6 +720,9 @@
     beep: () => { tone(1760, 0.04, 0, "square", 0.03); tone(1319, 0.05, 0.07, "square", 0.03); tone(1760, 0.04, 0.14, "square", 0.03); },
     wheee: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.05, i * 0.035, "sine", 0.05)),
     crunch: () => [140, 110, 90].forEach((f, i) => tone(f, 0.06, i * 0.05, "sawtooth", 0.05)),
+    // A satellite blows up (pop-BOOM), then its bits clatter down and crash.
+    kaboom: () => { noise(0, 0.5, 4000, 120, 0.35); tone(160, 0.25, 0, "square", 0.06); tone(90, 0.3, 0.05, "triangle", 0.08); },
+    clatter: (when) => { for (let k = 0; k < 4; k++) { noise(when + k * 0.07, 0.08, 2500, 400, 0.18); tone(700 - k * 90, 0.04, when + k * 0.07, "square", 0.03); } noise(when + 0.3, 0.3, 900, 80, 0.25); },
     fanfare: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone(f, 0.09, i * 0.09, "square", 0.04)),
     flip: () => { tone(988, 0.03, 0, "square", 0.03); tone(1319, 0.05, 0.04, "square", 0.03); },
     // So close: a little sad trombone, different from a flat miss.
@@ -866,10 +887,21 @@
     if (reduce || e.target.closest("button, input, a, .px, .hop, .tut-banner, .climb, header")) return;
     const sx = e.clientX / 4, sy = e.clientY / 4, now = performance.now();
     for (let i = flyers.length - 1; i >= 0; i--) {
-      const f = flyers[i], [rows] = FLY[f.k];
+      const f = flyers[i]; if (!FLY[f.k]) continue;   // explosion bits can't be tapped
+      const [rows] = FLY[f.k];
       if (f.hit || sx < f.x - 4 || sx > f.x + rows[0].length + 4 || sy < f.y - 4 || sy > f.y + rows.length + 4) continue;
       f.hit = now; haptic();
-      if (f.k === "sat") { sfx.beep(); f.blink = now; f.hit = 0; f.vx *= 1.6; }
+      if (f.k === "sat") {
+        // Kaboom: a flash of fire, then the pieces tumble down and crash.
+        sfx.kaboom(); sfx.clatter(0.75); flyers.splice(i, 1);
+        const cx = f.x + rows[0].length / 2, cy = f.y + rows.length / 2;
+        flyers.push({ k: "p", x: cx - 3, y: cy - 3, vx: 0, vy: 0, g: 0, born: now, life: 110, col: "#FFF1E8", sz: 6 }, { k: "p", x: cx - 2, y: cy - 2, vx: 0, vy: 0, g: 0, born: now, life: 220, col: "#FFEC27", sz: 4 });
+        for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, v = 20 + Math.random() * 25;
+          flyers.push({ k: "p", x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 0, born: now, life: 380 + Math.random() * 250, col: ["#FFF1E8", "#FFEC27", "#FFA300", "#FF004D"][k % 4], sz: k % 3 ? 1 : 2 }); }
+        for (let k = 0; k < 7; k++)
+          flyers.push({ k: "p", x: cx + (Math.random() - 0.5) * 4, y: cy, vx: f.vx * 0.3 + (Math.random() - 0.5) * 26, vy: -10 - Math.random() * 18, g: 70, born: now, life: 2600, col: ["#29ADFF", "#C2C3C7", "#29ADFF", "#5F574F"][k % 4], sz: k < 2 ? 2 : 1, spin: true });
+        return;
+      }
       else if (f.k === "ufo") { sfx.wheee(); f.vx *= 7; f.vy = -18; }
       else if (f.k === "rock" || f.k === "rock2") {
         sfx.crunch(); flyers.splice(i, 1);
@@ -894,6 +926,15 @@
       f.x += f.vx * dt;
       if (f.vy) f.y += f.vy * dt;
       if (f.k === "bit" && now - f.born > 1400) { flyers.splice(i, 1); continue; }
+      if (f.k === "p") {   // explosion sparks and falling satellite bits
+        const age = now - f.born;
+        if (age > f.life || f.y > sc.height + 4) { flyers.splice(i, 1); continue; }
+        f.vy += f.g * dt; if (!f.g) { f.vx *= 0.9; f.vy *= 0.9; }
+        if (!f.g && age > f.life * 0.6 && Math.floor(age / 60) % 2) continue;   // sparks flicker out
+        sctx.fillStyle = f.spin && Math.floor(age / 120) % 2 ? "#FFF1E8" : f.col;
+        sctx.fillRect(Math.round(f.x), Math.round(f.y), f.sz, f.sz);
+        continue;
+      }
       if (f.blink && now - f.blink < 900 && Math.floor((now - f.blink) / 110) % 2) continue;   // a happy blink
       if (f.hop && now - f.hop < 900) f.y -= Math.sin((now - f.hop) / 900 * Math.PI) * 0.35;
       const [rows, pal] = FLY[f.k];
@@ -1000,7 +1041,7 @@
   function chipsFor(R) {
     const out = [];
     for (const k of [3, 5, 10, 20, 30, 40]) {
-      const t = k * span(R) / 100;
+      const t = k * scaleOf(R) / 100;
       const v = t < 10 ? Math.max(1, Math.round(t)) : nice(t);   // small scales get every whole step
       if (!out.includes(v)) out.push(v);
     }
@@ -1290,7 +1331,7 @@
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w, R) : 0, m = multNow(), pts = base * m;
     // What real people guessed, when a published survey asked it.
     if (!practicing) {
-      results.push({ lo, hi, pts, base, inside, t: R.truth, s: span(R), cat: R.cat || "" });
+      results.push({ lo, hi, pts, base, inside, t: R.truth, s: scaleOf(R), cat: R.cat || "" });
       if (!preview) store.set(progKey(today.no), { results, open: -1 });
       const runTotal = results.reduce((t, x) => t + x.pts, 0);
       setTimeout(() => climbTo(runTotal / 1000), 650);
@@ -1517,8 +1558,11 @@
 
   // ---------- End: the mirror ----------
   function finish(again = false) {
-    if (!again && document.body.classList.contains("climbing")) { blastOff(() => finish.real(again)); return; }
-    finish.real(again);
+    if (again) { finish.real(again); return; }
+    // The last round gets its flight (or its sputter) like every other round, then the end screen.
+    const x = results[results.length - 1], total = results.reduce((t, y) => t + y.pts, 0);
+    const fly = () => hopTo(total - x.pts, total, x.pts === 0, () => finish.real(false));
+    if (document.body.classList.contains("climbing")) blastOff(fly); else fly();
   }
   finish.real = function (again) {
     showClimb(false);
@@ -1537,7 +1581,7 @@
     const hits = results.filter((x) => x.inside).length;
     // Bias over the rounds: is your range centered below or above the truth?
     const real = results.map((x, i) => [x, CASE[i]]).filter(([x]) => !x.skipped);
-    const facts = real.map(([x, R]) => (((x.lo + x.hi) / 2) - R.truth) * 100 / span(R));
+    const facts = real.map(([x, R]) => (((x.lo + x.hi) / 2) - R.truth) * 100 / scaleOf(R));
     const bias = facts.length ? facts.reduce((s, v) => s + v, 0) / facts.length : 0;
     const avgW = real.length ? real.reduce((s, [x, R]) => s + normWidth(R, x.lo, x.hi), 0) / real.length : 0;
     let title, sub;
@@ -1553,7 +1597,7 @@
     const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
     const tagFor = (x, R) => {
       if (x.skipped) return ["SKIPPED", "miss"];
-      if (!x.inside) return Math.max(x.lo - R.truth, R.truth - x.hi) <= span(R) * 0.08 ? ["SO CLOSE!", "near"] : ["WHOOPS", "miss"];
+      if (!x.inside) return Math.max(x.lo - R.truth, R.truth - x.hi) <= scaleOf(R) * 0.08 ? ["SO CLOSE!", "near"] : ["WHOOPS", "miss"];
       const b = x.base ?? x.pts;
       return b >= 100 ? ["BULLSEYE!", "top"] : b >= 60 ? ["NAILED IT", "great"] : b >= 25 ? ["NICE ONE", "good"] : ["PLAYED IT SAFE", "safe"];
     };
