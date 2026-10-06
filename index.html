@@ -632,12 +632,12 @@
   const normWidth = (r, lo, hi) => (hi - lo) * 100 / scaleOf(r);
   // Base points per round, 0-100. w is the full window as a % of the scale.
   // Nobody hits it on the nose, so anything within ±3% of the scale is a full 100.
-  // On a 0-100 scale: ±3 100 · ±5 91 · ±10 70 · ±20 37 · ±30 15 · ±40 3 · miss 0.
+  // On a 0-100 scale: ±3 100 · ±5 96 · ±10 85 · ±20 64 · ±30 43 · ±40 21 · miss 0. Points fall off evenly as the range widens.
   // On tiny scales (0-12 hours) the tightest window is ±1, so that counts as full points instead.
   function pointsFor(w, R) {
     const half = w / 2, full = Math.max(3, R ? 100 / scaleOf(R) : 0);
     if (half <= full + 1e-9) return 100;
-    return Math.max(1, Math.round(100 * Math.pow(Math.max(0, (50 - half) / (50 - full)), 2.2)));
+    return Math.max(1, Math.round(100 * Math.max(0, (50 - half) / (50 - full))));
   }
   // Later rounds are worth more. A perfect day is 100 + 100 + 200 + 200 + 400 = 1,000.
   const MULT = [1, 1, 2, 2, 4];
