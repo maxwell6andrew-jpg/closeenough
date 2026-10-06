@@ -1033,7 +1033,7 @@
   const lohi = () => [c - g, c + g];
   // Give-or-take choices scale with the question, rounded to clean numbers.
   const NICE = [1, 2, 3, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100, 150, 200, 250, 300, 400, 500, 750,
-                1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000];
+                1000, 1500, 2000, 2500, 3000, 4000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 75000, 100000];
   const nice = (t) => NICE.reduce((best, n) => Math.abs(n - t) < Math.abs(best - t) ? n : best, 1);
   // +/- and arrow keys move 1 on small scales, bigger steps on big ones (e.g. 50 m, 150 satellites).
   const num = (n) => Math.abs(n) >= 1000 ? n.toLocaleString("en-US") : String(n);
@@ -1045,7 +1045,7 @@
     for (const k of [5, 10, 15, 20, 30, 40]) {
       const t = k * scaleOf(R) / 100;
       const v = t < 10 ? Math.max(1, Math.round(t)) : nice(t);   // small scales get every whole step
-      if (!out.includes(v)) out.push(v);
+      if (!out.includes(v) && (v <= span(R) / 2 || out.length < 3)) out.push(v);   // a chip wider than half the dial would cover everything
     }
     return out;
   }
