@@ -434,7 +434,7 @@
 <div class="hop" id="hop" hidden>
   <div class="hop-top"><span class="lbl" id="hop-round"></span><b id="hop-pts"></b></div>
   <div class="hop-frame" id="hop-frame">
-    <div class="hop-err" id="hop-err" role="alert" hidden><div class="hop-err-bar">ERROR</div><b>ENGINE SPUTTERED</b><span>Wrong answer. No thrust this round.</span></div>
+    <div class="hop-err" id="hop-err" role="alert" hidden><div class="hop-err-bar">ERROR</div><b>ENGINE SPUTTERED</b><span id="hop-why">Wrong answer. No thrust this round.</span></div>
   </div>
   <p class="lbl hop-hint">Tap to continue</p>
 </div>
@@ -631,11 +631,11 @@
   const scaleOf = (r) => r.scale || span(r);
   const normWidth = (r, lo, hi) => (hi - lo) * 100 / scaleOf(r);
   // Base points per round, 0-100. w is the full window as a % of the scale.
-  // Nobody hits it on the nose, so anything within ±3% of the scale is a full 100.
-  // On a 0-100 scale: ±3 100 · ±5 96 · ±10 85 · ±20 64 · ±30 43 · ±40 21 · miss 0. Points fall off evenly as the range widens.
+  // Nobody hits it on the nose, so anything within ±5% of the scale is a full 100.
+  // On a 0-100 scale: ±5 100 · ±10 89 · ±15 78 · ±20 67 · ±30 44 · ±40 22 · miss 0. Points fall off evenly as the range widens.
   // On tiny scales (0-12 hours) the tightest window is ±1, so that counts as full points instead.
   function pointsFor(w, R) {
-    const half = w / 2, full = Math.max(3, R ? 100 / scaleOf(R) : 0);
+    const half = w / 2, full = Math.max(5, R ? 100 / scaleOf(R) : 0);
     if (half <= full + 1e-9) return 100;
     return Math.max(1, Math.round(100 * Math.max(0, (50 - half) / (50 - full))));
   }
@@ -1039,10 +1039,10 @@
   const num = (n) => Math.abs(n) >= 1000 ? n.toLocaleString("en-US") : String(n);
   const short = (n) => n >= 1000 ? (n / 1000).toFixed(n % 1000 ? 1 : 0) + "K" : String(n);
   const stepFor = (R) => span(R) >= 1000 ? nice(span(R) / 200) : 1;
-  // How sure are you: from ±3% of the scale (full points) out to ±40%.
+  // How sure are you: from ±5% of the scale (full points) out to ±40%.
   function chipsFor(R) {
     const out = [];
-    for (const k of [3, 5, 10, 20, 30, 40]) {
+    for (const k of [5, 10, 15, 20, 30, 40]) {
       const t = k * scaleOf(R) / 100;
       const v = t < 10 ? Math.max(1, Math.round(t)) : nice(t);   // small scales get every whole step
       if (!out.includes(v)) out.push(v);
@@ -1309,7 +1309,7 @@
       const sec = Math.ceil(left);
       if (sec !== lastSec) { lastSec = sec; if (sec > 5) sfx.tick(false); else if (sec > 0) sfx.countdown(sec); }
       paintTimer(left);
-      if (left <= 0) lockIn();
+      if (left <= 0) lockIn(null, true);
     }, 100);
   }
   function paintTimer(left) {
@@ -1321,7 +1321,7 @@
     $("secs").textContent = n;
   }
 
-  function lockIn(e) {
+  function lockIn(e, outOfTime = false) {
     if (locked) return;
     if (practicing && tut < 1) { nudgeTut(); return; }
     setTut(TUT.length);
@@ -1329,11 +1329,12 @@
     if (document.activeElement === cin) cin.blur();
     locked = true; clearInterval(timer); stopHold(); if (!e) sfx.lock(); endDrag(); haptic(true); hoverG = null; render();
     cin.disabled = true; $("minus").disabled = $("plus").disabled = true;
-    const R = r(), [lo, hi] = lohi(), inside = Math.abs(R.truth - c) <= g;
+    const R = r(), [lo, hi] = lohi(), inside = !outOfTime && Math.abs(R.truth - c) <= g;   // out of time: nothing lands
     const w = normWidth(R, lo, hi), base = inside ? pointsFor(w, R) : 0, m = multNow(), pts = base * m;
     // What real people guessed, when a published survey asked it.
     if (!practicing) {
-      results.push({ lo, hi, pts, base, inside, t: R.truth, s: scaleOf(R), cat: R.cat || "" });
+      results.push(outOfTime ? { lo: R.min, hi: R.min, pts: 0, base: 0, inside: false, skipped: true, timedOut: true, t: R.truth, s: scaleOf(R), cat: R.cat || "" }
+        : { lo, hi, pts, base, inside, t: R.truth, s: scaleOf(R), cat: R.cat || "" });
       if (!preview) store.set(progKey(today.no), { results, open: -1 });
       const runTotal = results.reduce((t, x) => t + x.pts, 0);
       setTimeout(() => climbTo(runTotal / 1000), 650);
@@ -1348,12 +1349,12 @@
     $("truth-tag").textContent = num(R.truth) + R.unit;
     for (const id of ["truth", "truth-tag"]) { const el = $(id); el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; }
 
-    const nearMiss = !inside && Math.max(lo - R.truth, R.truth - hi) <= span(R) * 0.08;
-    const vt = !inside ? (nearMiss ? "So close!" : R.truth < c ? "Too high. Missed." : "Too low. Missed.")
+    const nearMiss = !outOfTime && !inside && Math.max(lo - R.truth, R.truth - hi) <= span(R) * 0.08;
+    const vt = outOfTime ? "Out of time!" : !inside ? (nearMiss ? "So close!" : R.truth < c ? "Too high. Missed." : "Too low. Missed.")
       : base === 100 ? "Dead on." : base >= 60 ? "Tight and right." : base >= 25 ? "Caught it." : "Played it safe.";
     $("vt").textContent = vt;
     // What real people guessed, when a published survey asked it.
-    $("vs").textContent = `The answer is ${num(R.truth)}${R.unit}.` + (m > 1 && inside ? ` ${base} × ${m} = ${num(pts)}.` : "") +
+    $("vs").textContent = (outOfTime ? "Nothing landed. " : "") + `The answer is ${num(R.truth)}${R.unit}.` + (m > 1 && inside ? ` ${base} × ${m} = ${num(pts)}.` : "") +
       (R.ppl && !practicing ? ` People said ${num(R.ppl.guess)}${R.unit}.` : "");
     $("pts").classList.toggle("zero", !inside);
     $("why-t").textContent = R.why; $("why-s").textContent = "Source: " + R.src;
@@ -1453,6 +1454,7 @@
     $("hop-round").textContent = `Round ${ri + 1} of ${CASE.length}`;
     $("hop-pts").textContent = miss ? "+0" : `+${num(to - from)} · ${num(to)} PTS`;
     $("hop-err").hidden = !miss;
+    $("hop-why").textContent = results[ri] && results[ri].timedOut ? "Out of time. Nothing landed." : "Wrong answer. No thrust this round.";
     ov.classList.toggle("miss", miss); ov.hidden = false;
     if (miss) haptic(true);
     let done = false;
@@ -1598,6 +1600,7 @@
     // A cute reaction for each round, your window vs. the answer, a fun note, and where the number comes from.
     const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
     const tagFor = (x, R) => {
+      if (x.timedOut) return ["OUT OF TIME", "miss"];
       if (x.skipped) return ["SKIPPED", "miss"];
       if (!x.inside) return Math.max(x.lo - R.truth, R.truth - x.hi) <= scaleOf(R) * 0.08 ? ["SO CLOSE!", "near"] : ["WHOOPS", "miss"];
       const b = x.base ?? x.pts;
