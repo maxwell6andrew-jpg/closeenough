@@ -315,8 +315,30 @@
     background: var(--gold); color: var(--ink); text-align: center; box-shadow: 0 var(--u) 0 var(--ink); display: grid; gap: 2px;
     animation: slideDown 260ms steps(4); }
   .tut-banner b { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 0.9; letter-spacing: 0.04em; }
-  .tut-banner span { font-family: var(--label); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+  .tut-banner span { font-family: var(--label); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; max-width: 420px; justify-self: center; line-height: 1.3; }
   @keyframes slideDown { from { transform: translateY(-100%); } }
+  /* Sky arcade (desktop): blast things in the open sky for points */
+  .arcade { position: fixed; z-index: 6; left: 20px; bottom: 20px; display: grid; gap: 2px; padding: 10px 14px 12px; background: var(--ink); color: var(--paper);
+    box-shadow: 0 0 0 var(--u) var(--gold), 6px 6px 0 var(--u) rgba(0, 0, 0, .45); font-family: var(--label); font-size: 13px; letter-spacing: .08em; pointer-events: none; min-width: 168px; }
+  .arcade b { font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1; color: var(--gold); letter-spacing: .06em; }
+  .arcade i { font-style: normal; font-family: var(--display); font-size: 22px; color: var(--paper); font-variant-numeric: tabular-nums; margin-left: 6px; }
+  .arcade em { font-style: normal; font-family: var(--display); font-size: 20px; color: #FF77A8; min-height: 20px; }
+  .arcade.bump { animation: arcBump 220ms steps(3); }
+  @keyframes arcBump { from { transform: scale(1.12); } }
+  .arc-toast { position: fixed; z-index: 7; left: 20px; top: 34%; max-width: 260px; padding: 12px 16px 14px; background: var(--gold); color: var(--ink); display: grid; gap: 4px;
+    box-shadow: 0 0 0 var(--u) var(--ink), 6px 6px 0 var(--u) rgba(0, 0, 0, .45); pointer-events: none; animation: arcIn 320ms steps(4); }
+  .arc-toast b { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: .95; }
+  .arc-toast span { font-family: var(--label); font-size: 13px; font-weight: 700; line-height: 1.3; }
+  @keyframes arcIn { from { transform: scale(1.5); } }
+  @media (max-width: 899px) {   /* less open sky beside the game: a smaller panel tucked in the corner */
+    .arcade { left: 8px; bottom: 8px; min-width: 0; padding: 6px 9px 8px; font-size: 10px; }
+    .arcade b { font-size: 18px; } .arcade i { font-size: 16px; } .arcade em { font-size: 15px; min-height: 15px; }
+    .arc-toast { left: 8px; right: 8px; top: 8px; max-width: none; padding: 8px 12px 10px; } .arc-toast b { font-size: 22px; }
+  }
+  .arc-pop { position: fixed; z-index: 7; pointer-events: none; font-family: var(--display); font-size: 26px; color: var(--gold); text-shadow: 2px 2px 0 var(--ink); transform: translate(-50%, -100%);
+    animation: arcPop 900ms steps(9) forwards; white-space: nowrap; }
+  .arc-pop small { font-size: 18px; color: #FF77A8; margin-left: 4px; }
+  @keyframes arcPop { to { transform: translate(-50%, -260%); opacity: 0; } }
   body.tutorial .screen { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 78px); }
   body.tutorial #s-round { gap: 10px; }
   body.tutorial { padding-top: 76px; }
@@ -438,6 +460,8 @@
   </div>
   <p class="lbl hop-hint">Tap to continue</p>
 </div>
+<div class="arcade" id="arcade" hidden aria-live="polite"><b>ARCADE</b><span>SCORE <i id="arc-s">000000</i></span><span>HI <i id="arc-h">000000</i></span><em id="arc-c"></em></div>
+<div class="arc-toast" id="arc-toast" hidden><b>ARCADE MODE UNLOCKED</b><span>Blast satellites, rocks and UFOs for points</span></div>
 <div class="tut-banner" id="tut-banner" role="status" hidden><b>TUTORIAL MODE</b><span id="tut-sub">Tap the flashing yellow box</span></div>
 
 <div class="wrap">
@@ -459,7 +483,7 @@
       <div class="picker-row" id="preview-row" hidden></div>
       <div class="rules">
         <div class="rule"><i>1</i><div><b>Guess the number.</b></div></div>
-        <div class="rule"><i>2</i><div><b>Tap how sure you are.</b> Tighter scores more. Miss and it's 0.</div></div>
+        <div class="rule"><i>2</i><div><b>Pick your net.</b> The answer has to land in it. Smaller net, more points.</div></div>
         <div class="rule"><i>3</i><div><b>Later rounds count more.</b> The last one counts ×4.</div></div>
       </div>
       <button class="btn" id="start">START<small>UP TO 1,000 POINTS</small></button>
@@ -488,7 +512,7 @@
         <div class="scale lbl" id="scale"></div>
       </div>
       <div class="sure" id="sure">
-        <div class="sure-h"><span class="lbl">How sure? <b class="tap-l">Tap to lock in</b></span></div>
+        <div class="sure-h"><span class="lbl">How sure? <b class="tap-l">Pick your net</b></span></div>
         <div class="chips" id="chips"></div>
       </div>
 
@@ -595,29 +619,43 @@
   // Hands-on tutorial: one move at a time, highlighted, and it only moves on once you've done it.
   const TUT = [
     { sub: "Swipe the flashing bar to make your guess", el: "track" },
-    { sub: "How sure are you? Tap one to lock it in", el: "sure" },
+    { title: "PICK YOUR NET", sub: "±10 means \u201cI\u2019m within 10.\u201d Smaller net, more points. If the answer misses your net, it\u2019s 0.", el: "sure" },
   ];
   let tut = 0;
   function setTut(n) {
     tut = n;
     document.querySelectorAll(".spot").forEach((e) => e.classList.remove("spot"));
     if (!practicing || n >= TUT.length) return;
-    tutBanner(TUT[n].sub);
+    tutBanner(TUT[n].sub, TUT[n].title);
     $(TUT[n].el).classList.add("spot");
+    if (n === 1) netDemo();
     if (n > 0) { tone(660, 0.05); tone(990, 0.07, 0.06); }
     else { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.09, i * 0.09)); }   // tutorial intro jingle
   }
-  function tutBanner(sub) {
+  // While the tutorial asks you to pick a net, the net on the bar grows and shrinks through every choice,
+  // so you can see what ±5 or ±40 actually covers before you tap.
+  let netTimer = 0;
+  function netDemo() {
+    clearInterval(netTimer); let k = 0;
+    netTimer = setInterval(() => {
+      if (!practicing || locked || tut !== 1) { clearInterval(netTimer); return; }
+      if ($("chips").matches(":hover")) return;          // you're pointing at one: show that one
+      const seq = [...chipVals, ...chipVals.slice(1, -1).reverse()];
+      hoverG = seq[k++ % seq.length]; render();
+    }, 650);
+  }
+  function tutBanner(sub, title) {
     const on = !!sub;
     $("tut-banner").hidden = !on;
     document.body.classList.toggle("tutorial", on);
     if (on) {
+      $("tut-banner").querySelector("b").textContent = title || "TUTORIAL MODE";
       const el = $("tut-sub"); el.textContent = sub;
       el.style.animation = "none"; void el.offsetWidth; el.style.animation = "pop 260ms cubic-bezier(.2, 1.6, .4, 1)";
     }
   }
   // Tapped the wrong thing during the tutorial: bounce the instruction.
-  const nudgeTut = () => { if (practicing && tut < TUT.length) { tutBanner(TUT[tut].sub); tone(520, 0.05); } };
+  const nudgeTut = () => { if (practicing && tut < TUT.length) { tutBanner(TUT[tut].sub, TUT[tut].title); tone(520, 0.05); } };
   const tutDid = (step) => { if (practicing && tut === step) setTimeout(() => setTut(step + 1), step === 0 ? 450 : 250); };
   let practicing = false;
   let tutSeenNow = false;   // fallback when storage is blocked
@@ -720,6 +758,8 @@
     beep: () => { tone(1760, 0.04, 0, "square", 0.03); tone(1319, 0.05, 0.07, "square", 0.03); tone(1760, 0.04, 0.14, "square", 0.03); },
     wheee: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.05, i * 0.035, "sine", 0.05)),
     crunch: () => [140, 110, 90].forEach((f, i) => tone(f, 0.06, i * 0.05, "sawtooth", 0.05)),
+    coin: (combo) => { const b = 988 * Math.pow(1.06, combo - 1); tone(b, 0.05, 0.02, "square", 0.04); tone(b * 1.335, 0.12, 0.08, "square", 0.04); },
+    hiscore: () => [784, 988, 1175, 1568, 1175, 1568].forEach((f, i) => tone(f, 0.08, i * 0.07, "square", 0.04)),
     // A satellite blows up (pop-BOOM), then its bits clatter down and crash.
     kaboom: () => { noise(0, 0.5, 4000, 120, 0.35); tone(160, 0.25, 0, "square", 0.06); tone(90, 0.3, 0.05, "triangle", 0.08); },
     clatter: (when) => { for (let k = 0; k < 4; k++) { noise(when + k * 0.07, 0.08, 2500, 400, 0.18); tone(700 - k * 90, 0.04, when + k * 0.07, "square", 0.03); } noise(when + 0.3, 0.3, 900, 80, 0.25); },
@@ -859,7 +899,7 @@
   const flyers = [];
   function spawn(kind) {
     // Hidden tabs keep their timers but pause drawing: don't queue up a sky full of flyers.
-    if (reduce || !sc.width || document.hidden || flyers.length > 8) return;
+    if (reduce || !sc.width || document.hidden || flyers.length > (arcadeBusy() ? 16 : 8)) return;
     const fromLeft = Math.random() < 0.5, y = 4 + Math.random() * (sc.height - 12);
     const speed = { sat: 12, rock: 18, ufo: 15, drafty: 9 }[kind] || 13;   // px (low-res) per second
     const make = (k, dy = 0, dx = 0, sp = speed) => flyers.push({ k, x: fromLeft ? -8 - dx : sc.width + 8 + dx, y: y + dy, vx: (fromLeft ? 1 : -1) * sp, wob: Math.random() * 6, born: performance.now() });
@@ -877,13 +917,51 @@
     // The crowned D shows up now and then, not on a schedule you can set your watch by.
     nextAt = { sat: now + 1200, ufo: now + 7500, rock: now + 11000, drafty: now + gap("drafty") };
   }
+  // Arcade on and no round in progress: send more things across the sky.
+  const arcadeBusy = () => typeof arc !== "undefined" && arc.on && $("s-round").hidden;
   function maybeSpawn(now) {
-    for (const k in nextAt) if (now >= nextAt[k]) { spawn(k); nextAt[k] = now + gap(k); }
+    for (const k in nextAt) if (now >= nextAt[k]) { spawn(k); nextAt[k] = now + gap(k) * (arcadeBusy() && k !== "drafty" ? 0.4 : 1); }
   }
   resetSky(performance.now());
   // Coming back to the page (tab switch, app switch, or the back button): start with a clean sky.
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { resetSky(performance.now()); lastStar = 0; } });
   addEventListener("pageshow", (e) => { if (e.persisted) { resetSky(performance.now()); lastStar = 0; } });
+  // ---------- Sky arcade (desktop browsers): blast things in the open sky for points ----------
+  const ARCADE = matchMedia("(any-pointer: fine)").matches;   // any browser with a mouse or trackpad
+  const ARC_PTS = { sat: 100, rock: 50, rock2: 25, ufo: 250, drafty: 500 };
+  const arc = { on: false, score: 0, hi: 0, combo: 0, last: 0, beatHi: false };
+  try { arc.hi = Number(localStorage.getItem("fifty-arcade-hi")) || 0; } catch (e) {}
+  const pad6 = (n) => String(Math.min(999999, n)).padStart(6, "0");
+  function paintArcade() {
+    $("arc-s").textContent = pad6(arc.score); $("arc-h").textContent = pad6(arc.hi);
+    $("arc-c").textContent = arc.combo > 1 && performance.now() - arc.last < 2000 ? `COMBO ×${arc.combo}` : "";
+    const a = $("arcade"); a.classList.remove("bump"); void a.offsetWidth; a.classList.add("bump");
+  }
+  function arcadeHit(kind, x, y) {
+    if (!ARCADE || !ARC_PTS[kind]) return;
+    const now = performance.now();
+    arc.combo = now - arc.last < 2000 ? Math.min(5, arc.combo + 1) : 1; arc.last = now;
+    const pts = ARC_PTS[kind] * arc.combo; arc.score += pts;
+    if (!arc.on) {                                       // the first hit unlocks it
+      arc.on = true; $("arcade").hidden = false; $("arc-toast").hidden = false; sfx.streak();
+      setTimeout(() => { $("arc-toast").hidden = true; }, 3200);
+    } else sfx.coin(arc.combo);
+    if (arc.score > arc.hi) {
+      if (arc.hi > 0 && !arc.beatHi) { arc.beatHi = true; setTimeout(() => sfx.hiscore(), 150); toastHi(); }
+      arc.hi = arc.score; try { localStorage.setItem("fifty-arcade-hi", String(arc.hi)); } catch (e) {}
+    }
+    const el = document.createElement("div"); el.className = "arc-pop";
+    el.innerHTML = `+${pts}` + (arc.combo > 1 ? `<small>×${arc.combo}</small>` : "");
+    el.style.left = x + "px"; el.style.top = y + "px"; document.body.appendChild(el);
+    setTimeout(() => el.remove(), 950);
+    paintArcade();
+    setTimeout(() => { if (performance.now() - arc.last >= 2000) paintArcade(); }, 2050);   // the combo runs out
+  }
+  function toastHi() {
+    const t = $("arc-toast"); t.querySelector("b").textContent = "NEW HIGH SCORE!"; t.querySelector("span").textContent = "Keep blasting";
+    t.hidden = false; t.style.animation = "none"; void t.offsetWidth; t.style.animation = "";
+    setTimeout(() => { t.hidden = true; }, 2400);
+  }
   // Tap something drifting by (in the open sky, not on the game panel).
   function tapSky(e) {
     if (reduce || e.target.closest("button, input, a, .px, .hop, .tut-banner, .climb, header")) return;
@@ -895,7 +973,7 @@
       f.hit = now; haptic();
       if (f.k === "sat") {
         // Kaboom: a flash of fire, then the pieces tumble down and crash.
-        sfx.kaboom(); sfx.clatter(0.75); flyers.splice(i, 1);
+        sfx.kaboom(); sfx.clatter(0.75); flyers.splice(i, 1); arcadeHit("sat", e.clientX, e.clientY);
         const cx = f.x + rows[0].length / 2, cy = f.y + rows.length / 2;
         flyers.push({ k: "p", x: cx - 3, y: cy - 3, vx: 0, vy: 0, g: 0, born: now, life: 110, col: "#FFF1E8", sz: 6 }, { k: "p", x: cx - 2, y: cy - 2, vx: 0, vy: 0, g: 0, born: now, life: 220, col: "#FFEC27", sz: 4 });
         for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, v = 20 + Math.random() * 25;
@@ -904,12 +982,12 @@
           flyers.push({ k: "p", x: cx + (Math.random() - 0.5) * 4, y: cy, vx: f.vx * 0.3 + (Math.random() - 0.5) * 26, vy: -10 - Math.random() * 18, g: 70, born: now, life: 2600, col: ["#29ADFF", "#C2C3C7", "#29ADFF", "#5F574F"][k % 4], sz: k < 2 ? 2 : 1, spin: true });
         return;
       }
-      else if (f.k === "ufo") { sfx.wheee(); f.vx *= 7; f.vy = -18; }
+      else if (f.k === "ufo") { sfx.wheee(); f.vx *= 7; f.vy = -18; arcadeHit("ufo", e.clientX, e.clientY); }
       else if (f.k === "rock" || f.k === "rock2") {
-        sfx.crunch(); flyers.splice(i, 1);
+        sfx.crunch(); flyers.splice(i, 1); arcadeHit(f.k, e.clientX, e.clientY);
         for (let k = 0; k < 4; k++) flyers.push({ k: "bit", x: f.x + 1, y: f.y + 1, vx: f.vx * 0.4 + (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 30, born: now, wob: 0 });
       }
-      else if (f.k === "drafty") { sfx.fanfare(); f.hop = now; f.hit = 0; }
+      else if (f.k === "drafty") { sfx.fanfare(); f.hop = now; f.hit = 0; if (!f.scored) { f.scored = true; arcadeHit("drafty", e.clientX, e.clientY); } }
       return;
     }
   }
@@ -1150,6 +1228,8 @@
   });
   $("chips").addEventListener("pointerover", (e) => { const b = e.target.closest(".chip"); if (b && !locked) { hoverG = Number(b.dataset.g); render(); } });
   $("chips").addEventListener("pointerleave", () => { if (!locked) { hoverG = null; render(); } });
+  $("chips").addEventListener("pointerdown", (e) => { const b = e.target.closest(".chip"); if (b && !locked) { clearInterval(netTimer); hoverG = Number(b.dataset.g); render(); } });
+  $("chips").addEventListener("pointercancel", () => { if (!locked) { hoverG = null; render(); } });
 
   // Typing the guess.
   const cin = $("c-v");
@@ -1340,7 +1420,7 @@
       setTimeout(() => climbTo(runTotal / 1000), 650);
     }
     else {
-      tutBanner(inside ? "You got it! Gold line = the answer. Tap the yellow button" : "Gold line = the answer. Catch it to score. Tap the yellow button"); $("next").classList.add("spot");
+      tutBanner(inside ? "Caught it! The gold answer landed in your net. Tap the yellow button" : "The gold answer missed your net, so 0. Tap the yellow button", inside ? "CAUGHT IT!" : "MISSED"); $("next").classList.add("spot");
     }
     $("sure").hidden = true; $("timer-row").hidden = true; $("type-tag").hidden = true;   // the clock and hint have nothing left to say once you lock in
 
