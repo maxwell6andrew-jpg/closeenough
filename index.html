@@ -324,6 +324,12 @@
   .arcade i { font-style: normal; font-family: var(--display); font-size: 22px; color: var(--paper); font-variant-numeric: tabular-nums; margin-left: 6px; }
   .arcade em { font-style: normal; font-family: var(--display); font-size: 20px; color: #FF77A8; min-height: 20px; }
   .arcade.bump { animation: arcBump 220ms steps(3); }
+  .arc-lives { display: flex; gap: 4px; margin-top: 2px; min-height: 12px; }
+  .arc-lives svg { width: 14px; height: 12px; display: block; }
+  .arcade.hurt { box-shadow: 0 0 0 var(--u) #FF004D, 6px 6px 0 var(--u) rgba(0, 0, 0, .45); }
+  #stars.shake { animation: skyShake 160ms steps(2); }
+  @keyframes skyShake { 0% { transform: translate(3px, -2px); } 50% { transform: translate(-3px, 2px); } }
+  .arc-edge { position: fixed; z-index: 5; left: 0; right: 0; bottom: 0; height: 10px; background: #FF004D; pointer-events: none; }
   @keyframes arcBump { from { transform: scale(1.12); } }
   .arc-toast { position: fixed; z-index: 7; left: 20px; top: 34%; max-width: 260px; padding: 12px 16px 14px; background: var(--gold); color: var(--ink); display: grid; gap: 4px;
     box-shadow: 0 0 0 var(--u) var(--ink), 6px 6px 0 var(--u) rgba(0, 0, 0, .45); pointer-events: none; animation: arcIn 320ms steps(4); }
@@ -338,6 +344,7 @@
   .arc-pop { position: fixed; z-index: 7; pointer-events: none; font-family: var(--display); font-size: 26px; color: var(--gold); text-shadow: 2px 2px 0 var(--ink); transform: translate(-50%, -100%);
     animation: arcPop 900ms steps(9) forwards; white-space: nowrap; }
   .arc-pop small { font-size: 18px; color: #FF77A8; margin-left: 4px; }
+  .arc-pop.miss { color: #83769C; font-size: 20px; }
   @keyframes arcPop { to { transform: translate(-50%, -260%); opacity: 0; } }
   body.tutorial .screen { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 78px); }
   body.tutorial #s-round { gap: 10px; }
@@ -460,7 +467,8 @@
   </div>
   <p class="lbl hop-hint">Tap to continue</p>
 </div>
-<div class="arcade" id="arcade" hidden aria-live="polite"><b>ARCADE</b><span>SCORE <i id="arc-s">000000</i></span><span>HI <i id="arc-h">000000</i></span><em id="arc-c"></em></div>
+<div class="arcade" id="arcade" hidden aria-live="polite"><b>ARCADE</b><span>SCORE <i id="arc-s">000000</i></span><span>HI <i id="arc-h">000000</i></span><span>WAVE <i id="arc-w">1</i></span><span class="arc-lives" id="arc-l"></span><em id="arc-c"></em></div>
+<div class="arc-edge" id="arc-edge" hidden></div>
 <div class="arc-toast" id="arc-toast" hidden><b>ARCADE MODE UNLOCKED</b><span>Blast satellites, rocks and UFOs for points</span></div>
 <div class="tut-banner" id="tut-banner" role="status" hidden><b>TUTORIAL MODE</b><span id="tut-sub">Tap the flashing yellow box</span></div>
 
@@ -759,6 +767,12 @@
     wheee: () => [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.05, i * 0.035, "sine", 0.05)),
     crunch: () => [140, 110, 90].forEach((f, i) => tone(f, 0.06, i * 0.05, "sawtooth", 0.05)),
     coin: (combo) => { const b = 988 * Math.pow(1.06, combo - 1); tone(b, 0.05, 0.02, "square", 0.04); tone(b * 1.335, 0.12, 0.08, "square", 0.04); },
+    zap: () => { tone(1320, 0.04, 0, "square", 0.04); tone(660, 0.06, 0.03, "square", 0.04); },
+    hurt: () => { tone(220, 0.12, 0, "sawtooth", 0.06); tone(150, 0.2, 0.1, "sawtooth", 0.06); noise(0, 0.25, 900, 100, 0.2); },
+    wave: (n) => [523, 659, 784, 1047].forEach((f, i) => tone(f * Math.pow(1.03, n), 0.08, i * 0.07, "square", 0.04)),
+    clank: () => { tone(330, 0.05, 0, "square", 0.05); noise(0, 0.08, 3000, 800, 0.15); },
+    bossdown: () => { noise(0, 0.9, 4000, 60, 0.4); [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.12, 0.3 + i * 0.09, "square", 0.045)); },
+    gameover: () => [523, 440, 349, 262].forEach((f, i) => tone(f, i === 3 ? 0.5 : 0.18, i * 0.2, "square", 0.05)),
     hiscore: () => [784, 988, 1175, 1568, 1175, 1568].forEach((f, i) => tone(f, 0.08, i * 0.07, "square", 0.04)),
     // A satellite blows up (pop-BOOM), then its bits clatter down and crash.
     kaboom: () => { noise(0, 0.5, 4000, 120, 0.35); tone(160, 0.25, 0, "square", 0.06); tone(90, 0.3, 0.05, "triangle", 0.08); },
@@ -928,24 +942,32 @@
   addEventListener("pageshow", (e) => { if (e.persisted) { resetSky(performance.now()); lastStar = 0; } });
   // ---------- Sky arcade (desktop browsers): blast things in the open sky for points ----------
   const ARCADE = matchMedia("(any-pointer: fine)").matches;   // any browser with a mouse or trackpad
-  const ARC_PTS = { sat: 100, rock: 50, rock2: 25, ufo: 250, drafty: 500 };
-  const arc = { on: false, score: 0, hi: 0, combo: 0, last: 0, beatHi: false };
+  const ARC_PTS = { sat: 100, rock: 50, rock2: 25, ufo: 250, drafty: 500, bug_norm: 150, bug_zig: 200, bug_fast: 200, bug_armor: 300, armorHit: 50, bug_split: 150, bug_mini: 75,
+    bossHit: 50, boss: 2000, gold: 1000, pickup: 100 };
+  const BUG_KEY = { norm: "bug", zig: "bugC", fast: "bugY", armor: "bugP", armorHit: "bugK", split: "bugS", mini: "mini" };
+  const arc = { on: false, state: "off", score: 0, hi: 0, combo: 0, last: 0, beatHi: false, lives: 3, wave: 0, toSpawn: 0, nextBug: 0, goldAt: 0, breakUntil: 0, t: 0, slowUntil: 0 };
+  const slowMo = () => arc.slowUntil > arc.t;
   try { arc.hi = Number(localStorage.getItem("fifty-arcade-hi")) || 0; } catch (e) {}
   const pad6 = (n) => String(Math.min(999999, n)).padStart(6, "0");
+  const HEART = (on) => `<svg viewBox="0 0 7 6" aria-hidden="true"><path d="M1 0h2v1h1V0h2v1h1v2H6v1H5v1H4v1H3V5H2V4H1V3H0V1h1z" fill="${on ? "#FF004D" : "#3E2A3A"}"/></svg>`;
   function paintArcade() {
     $("arc-s").textContent = pad6(arc.score); $("arc-h").textContent = pad6(arc.hi);
-    $("arc-c").textContent = arc.combo > 1 && performance.now() - arc.last < 2000 ? `COMBO ×${arc.combo}` : "";
+    $("arc-w").textContent = arc.state === "over" ? "-" : Math.max(1, arc.wave);
+    $("arc-l").innerHTML = Array.from({ length: Math.max(3, arc.lives) }, (_, k) => HEART(k < arc.lives)).join("");
+    $("arc-c").textContent = (arc.combo > 1 && performance.now() - arc.last < 2000 ? `COMBO ×${arc.combo}` : "") + (slowMo() ? (arc.combo > 1 ? " · " : "") + "SLOW-MO" : "");
     const a = $("arcade"); a.classList.remove("bump"); void a.offsetWidth; a.classList.add("bump");
   }
   function arcadeHit(kind, x, y) {
     if (!ARCADE || !ARC_PTS[kind]) return;
     const now = performance.now();
     arc.combo = now - arc.last < 2000 ? Math.min(5, arc.combo + 1) : 1; arc.last = now;
+    if (!arc.on) {                                       // the first hit unlocks it and starts wave 1
+      arc.on = true; $("arcade").hidden = false; sfx.streak();
+      newGame(); arcToast("ARCADE MODE UNLOCKED", "Blast the bugs before they get past you. 3 lives.", 3200);
+    } else if (arc.state === "over") newGame();          // after game over, the next hit starts a new game
+    else sfx.coin(arc.combo);
     const pts = ARC_PTS[kind] * arc.combo; arc.score += pts;
-    if (!arc.on) {                                       // the first hit unlocks it
-      arc.on = true; $("arcade").hidden = false; $("arc-toast").hidden = false; sfx.streak();
-      setTimeout(() => { $("arc-toast").hidden = true; }, 3200);
-    } else sfx.coin(arc.combo);
+    if (arc.combo >= 3) { const st = $("stars"); st.classList.remove("shake"); void st.offsetWidth; st.classList.add("shake"); }
     if (arc.score > arc.hi) {
       if (arc.hi > 0 && !arc.beatHi) { arc.beatHi = true; setTimeout(() => sfx.hiscore(), 150); toastHi(); }
       arc.hi = arc.score; try { localStorage.setItem("fifty-arcade-hi", String(arc.hi)); } catch (e) {}
@@ -957,10 +979,95 @@
     paintArcade();
     setTimeout(() => { if (performance.now() - arc.last >= 2000) paintArcade(); }, 2050);   // the combo runs out
   }
-  function toastHi() {
-    const t = $("arc-toast"); t.querySelector("b").textContent = "NEW HIGH SCORE!"; t.querySelector("span").textContent = "Keep blasting";
+  function arcToast(title, sub, ms) {
+    const t = $("arc-toast"); t.querySelector("b").textContent = title; t.querySelector("span").textContent = sub;
     t.hidden = false; t.style.animation = "none"; void t.offsetWidth; t.style.animation = "";
-    setTimeout(() => { t.hidden = true; }, 2400);
+    clearTimeout(arcToast.t); arcToast.t = setTimeout(() => { t.hidden = true; }, ms);
+  }
+  const toastHi = () => arcToast("NEW HIGH SCORE!", "Keep blasting", 2400);
+  // The open sky beside the game panel, in sky pixels: the only place enemies can fly (and be clicked).
+  function gutters() {
+    const r = document.querySelector(".wrap").getBoundingClientRect(), L = Math.floor(r.left / SKY_PX) - 8, R0 = Math.ceil(r.right / SKY_PX) + 2;
+    return [[2, L], [R0, sc.width - 12]].filter(([a, b]) => b - a >= 12);
+  }
+  const arcPaused = () => arc.state !== "play" || !$("s-round").hidden || !$("hop").hidden || document.hidden;
+  function newGame() {
+    for (let i = flyers.length - 1; i >= 0; i--) if (flyers[i].k === "bug" || flyers[i].k === "boss") flyers.splice(i, 1);
+    for (let i = flyers.length - 1; i >= 0; i--) if (/^pk/.test(flyers[i].k)) flyers.splice(i, 1);
+    Object.assign(arc, { state: "play", score: 0, lives: 3, wave: 0, toSpawn: 0, beatHi: false, t: 0, breakUntil: 0, slowUntil: 0 });
+    nextWave();
+  }
+  function nextWave() {
+    arc.wave++; const boss = arc.wave % 3 === 0;   // a boss every third wave
+    arc.toSpawn = boss ? 0 : 4 + arc.wave * 2; arc.nextBug = arc.t + 2.2; arc.goldAt = arc.t + 4 + Math.random() * 8; arc.breakUntil = arc.t + 2.2;
+    if (boss) spawnBoss();
+    if (arc.wave > 1 || boss) { arcToast(boss ? `WAVE ${arc.wave}: BOSS!` : `WAVE ${arc.wave}`, boss ? `The mothership takes ${20 + 10 * (arc.wave / 3 - 1)} hits` : "Faster and more of them", 1600); }
+    sfx.wave(arc.wave); paintArcade();
+  }
+  function spawnBug() {
+    const g = gutters(); if (!g.length) return;
+    const [a, b] = g[Math.floor(Math.random() * g.length)], x0 = a + 4 + Math.random() * Math.max(1, b - a - 16), w = arc.wave;
+    // New kinds join as the waves go on: zigzaggers (2), fast divers (4), armored (5), splitters (7).
+    const pool = ["norm", "norm"]; if (w >= 2) pool.push("zig"); if (w >= 4) pool.push("fast"); if (w >= 5) pool.push("armor"); if (w >= 7) pool.push("split");
+    const type = pool[Math.floor(Math.random() * pool.length)], speed = { norm: 1, zig: 1, fast: 1.75, armor: 0.8, split: 0.9 }[type];
+    flyers.push({ k: "bug", type, x: x0, x0, y: -8, vx: 0, vy: (16 + w * 2) * speed, wob: Math.random() * 6, born: performance.now(), lo: a, hi: b - 9 });
+  }
+  function spawnBoss() {
+    const g = gutters(); if (!g.length) return;
+    const [a, b] = g.sort((p, q) => (q[1] - q[0]) - (p[1] - p[0]))[0];
+    const hp = 20 + 10 * (arc.wave / 3 - 1);             // each boss is tougher than the last
+    flyers.push({ k: "boss", x: a + 2, y: -8, vx: 16, vy: 3.5, hp, max: hp, lo: a, hi: Math.max(a + 1, b - 17), born: performance.now(), wob: 0, drop: arc.t + 2.5 });
+  }
+  function spawnGold() {
+    const fromLeft = Math.random() < 0.5, y = 6 + Math.random() * (sc.height * 0.5);
+    flyers.push({ k: "gold", x: fromLeft ? -14 : sc.width + 2, y, vx: (fromLeft ? 1 : -1) * 46, born: performance.now(), wob: 0 });
+  }
+  // Runs with the sky's clock. Pauses whenever a round (or a flight) is on screen.
+  function arcadeTick(dt) {
+    if (!ARCADE || arcPaused()) return;
+    arc.t += dt;
+    if (arc.toSpawn > 0 && arc.t >= arc.nextBug) { spawnBug(); arc.toSpawn--; arc.nextBug = arc.t + Math.max(0.45, 1.7 - arc.wave * 0.12) * (0.7 + Math.random() * 0.6); }
+    if (arc.goldAt && arc.t >= arc.goldAt) { arc.goldAt = 0; spawnGold(); }
+    const alive = flyers.some((f) => f.k === "bug" || f.k === "boss");
+    if (arc.toSpawn === 0 && !alive && arc.t > arc.breakUntil) { arc.breakUntil = arc.t + 1.5; setTimeout(() => { if (arc.state === "play") nextWave(); }, 1200); arc.toSpawn = -1; }
+  }
+  function maybeDrop(f, now) {
+    if (f.type === "mini" || Math.random() > 0.13) return;
+    const kinds = arc.lives < 5 ? ["pkHeart", "pkBomb", "pkSlow"] : ["pkBomb", "pkSlow"];
+    flyers.push({ k: kinds[Math.floor(Math.random() * kinds.length)], x: f.x + 1, y: f.y + 1, vx: 0, vy: 9, born: now, wob: 0 });
+  }
+  function burst(x, y, cols, n = 8, v = 30, now = performance.now()) {
+    for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2; flyers.push({ k: "p", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 0, born: now, life: 340, col: cols[k % cols.length], sz: 1 }); }
+  }
+  function bomb(cx, cy) {                                 // clears every bug on screen and hurts the boss
+    sfx.bossdown(); const now = performance.now(); let n = 0;
+    for (let i = flyers.length - 1; i >= 0; i--) {
+      const f = flyers[i];
+      if (f.k === "bug") { flyers.splice(i, 1); burst(f.x + 4, f.y + 3, ["#FFEC27", "#FFF1E8"], 8, 30, now); n++; }
+      if (f.k === "boss") { f.hp = Math.max(1, f.hp - 6); f.flash = now; }
+    }
+    arc.score += n * 100; if (arc.score > arc.hi) { arc.hi = arc.score; try { localStorage.setItem("fifty-arcade-hi", String(arc.hi)); } catch (e) {} }
+    const st = $("stars"); st.classList.remove("shake"); void st.offsetWidth; st.classList.add("shake");
+    $("arc-edge").hidden = true; paintArcade();
+  }
+  function arcMiss(x, y) {                                // clicking empty sky breaks your combo
+    if (!ARCADE || arc.state !== "play" || arcPaused()) return;
+    const had = arc.combo > 1 && performance.now() - arc.last < 2000; arc.combo = 0; arc.last = 0;
+    tone(160, 0.05, 0, "square", 0.03);
+    const el = document.createElement("div"); el.className = "arc-pop miss"; el.textContent = had ? "COMBO LOST" : "MISS";
+    el.style.left = x + "px"; el.style.top = y + "px"; document.body.appendChild(el); setTimeout(() => el.remove(), 950);
+    paintArcade();
+  }
+  function loseLife(n = 1) {
+    arc.lives = Math.max(0, arc.lives - n); sfx.hurt();
+    $("arc-edge").hidden = false; setTimeout(() => { $("arc-edge").hidden = true; }, 220);
+    $("arcade").classList.add("hurt"); setTimeout(() => $("arcade").classList.remove("hurt"), 400);
+    if (arc.lives <= 0) {
+      arc.state = "over"; sfx.gameover();
+      for (let i = flyers.length - 1; i >= 0; i--) if (flyers[i].k === "bug" || flyers[i].k === "boss") flyers.splice(i, 1);
+      arcToast("GAME OVER", `Score ${pad6(arc.score)}. Click anything flying to play again.`, 5000);
+    }
+    paintArcade();
   }
   // Tap something drifting by (in the open sky, not on the game panel).
   function tapSky(e) {
@@ -982,6 +1089,35 @@
           flyers.push({ k: "p", x: cx + (Math.random() - 0.5) * 4, y: cy, vx: f.vx * 0.3 + (Math.random() - 0.5) * 26, vy: -10 - Math.random() * 18, g: 70, born: now, life: 2600, col: ["#29ADFF", "#C2C3C7", "#29ADFF", "#5F574F"][k % 4], sz: k < 2 ? 2 : 1, spin: true });
         return;
       }
+      else if (f.k === "bug") {
+        if (f.type === "armor") { f.type = "armorHit"; f.hit = 0; f.flash = now; sfx.clank(); arcadeHit("armorHit", e.clientX, e.clientY); return; }   // the armor cracks first
+        sfx.zap(); flyers.splice(i, 1);
+        burst(f.x + 4, f.y + 3, [FLY[BUG_KEY[f.type] || "bug"][1].g, "#FFF1E8"], 8, 30, now);
+        if (f.type === "split") for (const d of [-5, 5]) flyers.push({ k: "bug", type: "mini", x: f.x + d, x0: f.x + d, y: f.y + 2, vx: 0, vy: f.vy * 1.3, wob: Math.random() * 6, born: now, lo: f.lo, hi: f.hi });
+        maybeDrop(f, now);
+        arcadeHit("bug_" + (f.type === "armorHit" ? "armor" : f.type || "norm"), e.clientX, e.clientY);
+      }
+      else if (/^pk/.test(f.k)) {
+        flyers.splice(i, 1); burst(f.x + 3, f.y + 3, ["#FFF1E8", "#FFEC27"], 10, 26, now);
+        if (f.k === "pkHeart") { arc.lives = Math.min(5, arc.lives + 1); [784, 1047, 1319].forEach((q, k) => tone(q, 0.09, k * 0.07, "triangle", 0.05)); arcToast("+1 LIFE", "Nice catch", 1200); }
+        if (f.k === "pkSlow") { arc.slowUntil = arc.t + 5; [1319, 1047, 784, 523].forEach((q, k) => tone(q, 0.1, k * 0.08, "sine", 0.05)); arcToast("SLOW-MO", "5 seconds", 1200); setTimeout(paintArcade, 5100); }
+        if (f.k === "pkBomb") { bomb(f.x, f.y); arcToast("BOMB!", "Screen cleared", 1200); }
+        arcadeHit("pickup", e.clientX, e.clientY);
+      }
+      else if (f.k === "boss") {
+        f.hp--; f.flash = now; f.hit = 0; sfx.clank();
+        if (Math.random() < 0.35) { f.x = Math.min(f.hi, Math.max(f.lo, f.x + (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 8))); f.vx = -f.vx; }   // it jerks away
+        if (f.hp <= 0) {
+          sfx.bossdown(); flyers.splice(i, 1);
+          for (let k = 0; k < 30; k++) { const a = k / 30 * Math.PI * 2, v = 15 + Math.random() * 40; flyers.push({ k: "p", x: f.x + 8, y: f.y + 4, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: k % 3 ? 0 : 40, born: now, life: 500 + Math.random() * 600, col: ["#FFF1E8", "#FFEC27", "#FFA300", "#FF004D"][k % 4], sz: k % 4 ? 1 : 2 }); }
+          arcadeHit("boss", e.clientX, e.clientY);
+        } else arcadeHit("bossHit", e.clientX, e.clientY);
+      }
+      else if (f.k === "gold") {
+        sfx.kaboom(); flyers.splice(i, 1);
+        for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; flyers.push({ k: "p", x: f.x + 6, y: f.y + 2, vx: Math.cos(a) * 35, vy: Math.sin(a) * 35, g: 0, born: now, life: 600, col: k % 2 ? "#FFEC27" : "#FFF1E8", sz: 2 }); }
+        arcadeHit("gold", e.clientX, e.clientY);
+      }
       else if (f.k === "ufo") { sfx.wheee(); f.vx *= 7; f.vy = -18; arcadeHit("ufo", e.clientX, e.clientY); }
       else if (f.k === "rock" || f.k === "rock2") {
         sfx.crunch(); flyers.splice(i, 1); arcadeHit(f.k, e.clientX, e.clientY);
@@ -990,6 +1126,7 @@
       else if (f.k === "drafty") { sfx.fanfare(); f.hop = now; f.hit = 0; if (!f.scored) { f.scored = true; arcadeHit("drafty", e.clientX, e.clientY); } }
       return;
     }
+    arcMiss(e.clientX, e.clientY);
   }
   document.addEventListener("pointerdown", tapSky, { passive: true });
   // The logo does a little flip when you tap it.
@@ -1000,11 +1137,45 @@
     if (logoTaps.length >= 10 && !reduce) { logoTaps = []; warpUntil = now + 3500; sfx.warp(); haptic(true); }   // shh, secret
   });
   FLY.bit = [["b"], { b: "#AB5236" }];
+  // Arcade enemies: little space bugs (two frames), the mothership, and a rare gold satellite.
+  const BUGPAL = { g: "#00E436", d: "#008751", w: "#FFF1E8", k: "#0A1029" };
+  FLY.bug = [["..g...g..", "...g.g...", "..ggggg..", ".ggwgwgg.", "ggggggggg", "g.ggggg.g", "g.g...g.g", "...gg.gg."], BUGPAL];
+  FLY.bug2 = [["..g...g..", "g..g.g..g", "g.ggggg.g", "ggkwgwkgg", "ggggggggg", ".ggggggg.", "..g...g..", ".g.....g."], BUGPAL];
+  // Bug types share a shape, each in its own colors.
+  for (const [k, main, dark] of [["bugY", "#FFEC27", "#AB8A00"], ["bugP", "#B06CFF", "#5A2D9A"], ["bugK", "#FF77A8", "#A8327A"], ["bugC", "#29E0E0", "#1E6F8F"], ["bugS", "#FFA300", "#AB5236"]]) {
+    const pal = { g: main, d: dark, w: "#FFF1E8", k: "#0A1029" };
+    FLY[k] = [FLY.bug[0], pal]; FLY[k + "2"] = [FLY.bug2[0], pal];
+  }
+  FLY.mini = [[".g.g.", "ggggg", "gwgwg", "g...g"], { g: "#FFA300", w: "#FFF1E8" }];
+  FLY.mini2 = [[".g.g.", "ggggg", "gwgwg", ".g.g."], { g: "#FFA300", w: "#FFF1E8" }];
+  // Pickups a destroyed bug sometimes drops: click them before they fall away.
+  FLY.pkHeart = [[".rr.rr.", "rrwrrrr", "rrrrrrr", ".rrrrr.", "..rrr..", "...r..."], { r: "#FF004D", w: "#FFF1E8" }];
+  FLY.pkBomb = [["....y..", "...o...", "..kkk..", ".kwkkk.", ".kkkkk.", ".kkkkk.", "..kkk.."], { k: "#2A2D3A", w: "#C2C3C7", o: "#FFA300", y: "#FFEC27" }];
+  FLY.pkSlow = [["..www..", ".wcccw.", "wcckccw", "wcckccw", "wcccccw", ".wcccw.", "..www.."], { w: "#FFF1E8", c: "#29ADFF", k: "#0A1029" }];
+  FLY.boss = [["......rrrrr......", "....rrrrrrrrr....", "...rrwrrrrrwrr...", ".rrrrrrrrrrrrrrr.", "rrYrrYrrYrrYrrYrr", ".rrrrrrrrrrrrrrr.", "...rr...r...rr...", "..r.....r.....r.."], { r: "#FF004D", w: "#FFF1E8", Y: "#FFEC27" }];
+  FLY.gold = [["yYyY..W..yYyY", "YyYy.WWW.YyYy", "yYyYOOOOOyYyY", "YyYy.OOO.YyYy", "yYyY..W..yYyY"], { Y: "#FFEC27", y: "#FFA300", W: "#FFF1E8", O: "#FFFFFF" }];
   function paintFlyers(now, dt) {
+    arcadeTick(dt);
+    const frozen = ARCADE && arcPaused();
     for (let i = flyers.length - 1; i >= 0; i--) {
       const f = flyers[i];
-      f.x += f.vx * dt;
-      if (f.vy) f.y += f.vy * dt;
+      const enemy = f.k === "bug" || f.k === "boss", arcy = enemy || /^pk/.test(f.k);
+      const slow = arcy && ARCADE && slowMo() ? 0.4 : 1;
+      if (!(arcy && frozen)) { f.x += f.vx * dt * slow; if (f.vy) f.y += f.vy * dt * slow; }
+      if (f.k === "bug") {                                         // each kind wiggles its own way
+        const [amp, per] = { zig: [10, 260], fast: [1, 700], mini: [3, 400] }[f.type] || [4, 700];
+        f.x = Math.min(f.hi, Math.max(f.lo, f.x0 + Math.sin(now / per + f.wob) * amp));
+      }
+      if (f.k === "boss" && (f.x < f.lo || f.x > f.hi)) { f.vx = -f.vx; f.x = Math.min(f.hi, Math.max(f.lo, f.x)); }
+      if (f.k === "boss" && !frozen) {
+        const rage = 1 - f.hp / f.max;                                   // 0 fresh, 1 nearly dead
+        f.vx = Math.sign(f.vx || 1) * (16 + rage * 26); f.vy = 3.5 + rage * 3;
+        if (arc.t >= f.drop) {                                           // it drops a bug below itself
+          f.drop = arc.t + Math.max(1.1, 2.6 - rage * 1.4);
+          flyers.push({ k: "bug", type: Math.random() < 0.5 ? "norm" : "zig", x: f.x + 4, x0: f.x + 4, y: f.y + 8, vx: 0, vy: 18 + arc.wave * 2, wob: Math.random() * 6, born: now, lo: f.lo, hi: f.hi + 8 });
+        }
+      }
+      if (enemy && f.y > sc.height - 4) { flyers.splice(i, 1); if (arc.state === "play") loseLife(f.k === "boss" ? 2 : 1); continue; }
       if (f.k === "bit" && now - f.born > 1400) { flyers.splice(i, 1); continue; }
       if (f.k === "p") {   // explosion sparks and falling satellite bits
         const age = now - f.born;
@@ -1017,7 +1188,15 @@
       }
       if (f.blink && now - f.blink < 900 && Math.floor((now - f.blink) / 110) % 2) continue;   // a happy blink
       if (f.hop && now - f.hop < 900) f.y -= Math.sin((now - f.hop) / 900 * Math.PI) * 0.35;
-      const [rows, pal] = FLY[f.k];
+      const fk = f.k === "bug" ? (BUG_KEY[f.type] || "bug") + (Math.floor(now / 300) % 2 ? "2" : "") : f.k;
+      if (/^pk/.test(f.k) && Math.floor(now / 250) % 2 && now - f.born > 2000) continue;   // pickups blink as they fall
+      if (f.k === "bug" && f.flash && now - f.flash < 90) { sctx.fillStyle = "#FFF1E8"; sctx.fillRect(Math.round(f.x), Math.round(f.y), 9, 8); continue; }
+      const [rows, pal] = FLY[fk];
+      if (f.k === "boss") {                                        // its health bar, and a flash when it's hit
+        sctx.fillStyle = "#0A1029"; sctx.fillRect(Math.round(f.x), Math.round(f.y) - 3, 17, 2);
+        sctx.fillStyle = f.hp > f.max / 3 ? "#00E436" : "#FF004D"; sctx.fillRect(Math.round(f.x), Math.round(f.y) - 3, Math.round(17 * f.hp / f.max), 2);
+        if (f.flash && now - f.flash < 90) { sctx.fillStyle = "#FFF1E8"; sctx.fillRect(Math.round(f.x), Math.round(f.y), 17, 8); continue; }
+      }
       const y = Math.round(f.y + (f.k === "ufo" ? Math.sin(now / 300 + f.wob) * 2 : f.k === "drafty" ? Math.sin(now / 500) * 1.5 : 0));
       rows.forEach((r, j) => [...r].forEach((ch, c) => { if (pal[ch]) { sctx.fillStyle = pal[ch]; sctx.fillRect(Math.round(f.x) + c, y + j, 1, 1); } }));
       if (f.k === "ufo" && Math.floor(now / 200) % 2) { sctx.fillStyle = "rgba(124,227,161,.35)"; sctx.fillRect(Math.round(f.x) + 2, y + 4, 3, 3); }
