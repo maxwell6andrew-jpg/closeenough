@@ -2539,6 +2539,16 @@
     nebula: ["SHH... BABY STARS", "*TWINKLE*", "A STAR IS BORN"], nova: ["KA-BOOOM!", "DO IT AGAIN!", "BOOM BOOM!"],
     hole: ["DON'T LOOK DOWN", "SLUUURP", "NOM NOM STARS"],
   };
+  // What each line SOUNDS like, in plain words a voice reads properly (no stretched letters, which voices spell out).
+  // Same order as LINES. An empty string means that line is just a look, not something said.
+  const SAY = {
+    sats: ["Beep boop! Hi!", "Boop beep?", "Signal: friendly!"], rocks: ["Watch it, pal!", "Ouch. Rocky.", "Still here!"],
+    moon: ["Oh hi! Nice ship!", "", "See you tonight!"], mars: ["Honk honk!", "Beep! Found a rock!", "Honk!"],
+    kepler: ["Do I have life?", "Wanna live here?", "Room for one more!", "Hi, cousin Earth!"], giant: ["Wee! Slingshot!", "Again! Again!", "So much gas."],
+    ufo: ["Hi, Earthling!", "We come in peace.", "You are so smart.", "Come back tomorrow!"],
+    nebula: ["Hush. Baby stars.", "", "A star is born."], nova: ["Kaboom!", "Do it again!", "Boom! Boom!"],
+    hole: ["Don't look down.", "Slurp.", "Yum yum, stars."],
+  };
   const FOCUS_PX = { ufo: 0.62, rocks: 0.8, hole: 0.55, nebula: 0.9, sats: 0.72, nova: 0.55 };
   let greet = null;   // { st, at, line, poke }
   function stopCenter(st) {
@@ -2548,15 +2558,15 @@
   function startGreet(st, now, speak = true) {
     if (!st || st.key === "whale" || !LINES[st.key]) return;
     greet = { st, at: now, line: 0, poke: 0 };
-    if (st.key === "ufo" && speak) { sfx.aliens(); voiceLine("ufo", "Hi, Earthling!"); }
-    else if (speak) voiceLine(st.key, LINES[st.key][0]);
+    if (st.key === "ufo" && speak) sfx.aliens();
+    if (speak) voiceLine(st.key, 0);
   }
   function poke() {
     if (!greet) return;
     greet.poke = performance.now(); greet.line++;
     const k = greet.st.key;
     if (k === "ufo") sfx.aliens(); else if (sfx.react[k]) sfx.react[k](); else sfx.pass(k);
-    voiceLine(k, LINES[k][greet.line % LINES[k].length]);
+    voiceLine(k, greet.line % LINES[k].length);
   }
   function drawBubble(text, sx, sy) {
     ctx.font = "16px 'Jersey 10', monospace"; ctx.textBaseline = "middle";
@@ -3109,11 +3119,9 @@
     nova:   { names: ["Albert", "Boing", "Superstar"], pitch: 1.4, rate: 1.4 },    // loud and excited
     hole:   { names: ["Bad News", "Cellos", "Ralph"], pitch: 0.1, rate: 0.6 },     // deep and spooky
   };
-  function voiceLine(key, text) {
+  function voiceLine(key, line) {
     if (window.Launch && window.Launch.muted) return;
-    const v = VOICE[key]; if (!v || !text) return;
-    const say = text.replace(/\*[^*]*\*/g, "").replace(/ - ROVER/, "").replace(/\bU R\b/, "you are").replace(/TMRW/, "tomorrow").replace(/\.\.\./g, ",").toLowerCase().trim();
-    if (!/[a-z]/.test(say)) return;                     // "*WINK*" is just a wink
+    const v = VOICE[key], say = SAY[key] && SAY[key][line]; if (!v || !say) return;   // "*WINK*" is just a wink
     try {
       const u = new SpeechSynthesisUtterance(say), all = speechSynthesis.getVoices();
       const pick = v.names.map((n) => all.find((x) => x.name.toLowerCase().startsWith(n.toLowerCase()))).find(Boolean);
