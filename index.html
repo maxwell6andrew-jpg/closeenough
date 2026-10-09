@@ -110,7 +110,7 @@
   /* The climb: a pixel rocket rides up the side as your score grows. */
   #s-round { position: relative; }
   /* The climb: an open-air track on the left of the page with a rocket that rises as you score. */
-  /* Between rounds: the launch camera pulls back to show how far you've flown. */
+  /* The end-of-day launch overlay (no flights between rounds anymore). */
   .hop { position: fixed; inset: 0; z-index: 40; background: rgba(5, 8, 26, .94); display: grid; grid-template-rows: auto 1fr auto; justify-items: center; align-items: center;
     padding: max(14px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom)); gap: 10px; cursor: pointer; }
   .hop-top { display: flex; gap: 14px; align-items: baseline; }
@@ -124,6 +124,10 @@
   .hop-err { position: absolute; z-index: 2; left: 8%; right: 8%; top: 38%; background: #FFF1E8; color: #FF004D; text-align: center; padding: 0 0 14px;
     box-shadow: 0 0 0 4px #FF004D, 0 0 0 8px var(--ink), 8px 8px 0 8px rgba(0, 0, 0, .5); animation: errIn 260ms steps(3); }
   @keyframes errIn { from { transform: scale(1.6); } }
+  /* A miss between rounds: the error box pops over the round screen for a moment, no flight. */
+  .sputter { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; background: rgba(5, 8, 26, .55); cursor: pointer; }
+  .sputter .hop-err { position: relative; left: auto; right: auto; top: auto; width: min(340px, 86vw); }
+  .wrap.sputtering { animation: sputter 140ms steps(2) 6; }
   .hop-err-bar { background: #FF004D; color: #FFF1E8; font-family: var(--label); font-size: 12px; letter-spacing: .14em; padding: 6px 0; margin-bottom: 10px; }
   .hop-err b { display: block; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 9vw, 40px); line-height: .95; animation: spot 500ms steps(2) infinite; }
   .hop-err span { display: block; margin-top: 6px; padding: 0 14px; font-size: 15px; line-height: 1.3; color: var(--ink); }
@@ -460,6 +464,7 @@
 
 <canvas id="stars" aria-hidden="true"></canvas>
 <div class="climb" id="climb" aria-hidden="true"></div>
+<div class="sputter" id="sputter" hidden><div class="hop-err" role="alert"><div class="hop-err-bar">ERROR</div><b>ENGINE SPUTTERED</b><span id="sputter-why">Wrong answer. No thrust this round.</span></div></div>
 <div class="hop" id="hop" hidden>
   <div class="hop-top"><span class="lbl" id="hop-round"></span><b id="hop-pts"></b></div>
   <div class="hop-frame" id="hop-frame">
@@ -1697,12 +1702,12 @@
     if (ri < CASE.length - 1) {
       const x = results[ri], after = results.reduce((t, y) => t + y.pts, 0);
       $("next").hidden = true;
-      hopTo(after - x.pts, after, x.pts === 0, () => { ri++; startRound(); });
+      afterRound(x, () => { ri++; startRound(); });
     } else { $("next").hidden = true; finish(); }
   });
   $("again").addEventListener("click", () => { window.Launch && window.Launch.stop(); loadCase(today); show("title"); });
 
-  // ---------- Between rounds: fly out (or sputter) in the launch scene ----------
+  // ---------- Old between-round flight (unused since 2026-10-08: rounds flow straight on; the launch plays once at the end) ----------
   let hopBack = null;
   function hopTo(from, to, miss, then) {
     const L = window.Launch, st = $("stage"), ov = $("hop");
@@ -1822,10 +1827,43 @@
   // ---------- End: the mirror ----------
   function finish(again = false) {
     if (again) { finish.real(again); return; }
-    // The last round gets its flight (or its sputter) like every other round, then the end screen.
+    // The last round: its sputter if it missed, then the one big launch through every stop you reached.
     const x = results[results.length - 1], total = results.reduce((t, y) => t + y.pts, 0);
-    const fly = () => hopTo(total - x.pts, total, x.pts === 0, () => finish.real(false));
-    if (document.body.classList.contains("climbing")) blastOff(fly); else fly();
+    const go = () => launchEnd(total, () => finish.real(false));
+    afterRound(x, () => { if (document.body.classList.contains("climbing")) blastOff(go); else go(); });
+  }
+  // After each round: a miss (or running out of time) gets the ENGINE SPUTTERED box for a moment. A hit goes straight on.
+  function afterRound(x, then) {
+    if (!x || x.pts > 0) { then(); return; }
+    const box = $("sputter"); $("sputter-why").textContent = x.timedOut ? "Out of time. Nothing landed." : "Wrong answer. No thrust this round.";
+    box.hidden = false; haptic(true);
+    const w = document.querySelector(".wrap"); w.classList.remove("sputtering"); void w.offsetWidth; w.classList.add("sputtering");
+    if (window.Launch && window.Launch.sputter) { window.Launch.muted = !soundOn; window.Launch.sputter(); }
+    let done = false;
+    const go = () => { if (done) return; done = true; clearTimeout(t); box.hidden = true; box.onclick = null; then(); };
+    const t = setTimeout(go, 1700); box.onclick = go;
+  }
+  // The end: the full launch, from Earth through every stop you reached. One tap skips to the end screen.
+  function launchEnd(total, then) {
+    const L = window.Launch, st = $("stage"), ov = $("hop");
+    if (!L || !st) { then(); return; }
+    hopBack = { parent: st.parentNode, next: st.nextSibling };
+    $("hop-frame").appendChild(st); st.hidden = false;
+    $("hop-round").textContent = "LAUNCH"; $("hop-pts").textContent = `${num(total)} PTS`;
+    $("hop-err").hidden = true; ov.classList.remove("miss"); ov.hidden = false;
+    $("hop").querySelector(".hop-hint").textContent = "Tap to skip";
+    let done = false;
+    const close = () => {
+      if (done) return; done = true; clearTimeout(safety); ov.removeEventListener("click", tap, true);
+      L.stop(); ov.hidden = true; st.hidden = true; hopBack.parent.insertBefore(st, hopBack.next);
+      $("hop").querySelector(".hop-hint").textContent = "Tap to continue";
+      then();
+    };
+    const safety = setTimeout(function nudge() { if (document.hidden) { setTimeout(nudge, 1000); return; } close(); }, 45000);
+    const tap = (e) => { e.stopPropagation(); e.preventDefault(); close(); };
+    ov.addEventListener("click", tap, true);   // capture, so a tap on the scene itself skips too
+    L.muted = !soundOn;
+    L.play(total, L.planetFor(today.no), () => setTimeout(close, 2600));
   }
   finish.real = function (again) {
     showClimb(false);
@@ -3055,10 +3093,10 @@
     $("final").classList.remove("on"); $("callout").classList.remove("on");
   }
   // Fly from stop a to stop b (b > a), then call done(greeted).
-  function flyFrom(a, b, done) {
+  function flyFrom(a, b, done, quick) {
     const home = a < 0, gap = b - a - 1;
-    fly = { from: a, to: b, home, t0: performance.now(), ignite: home && !reduce ? 750 : 0, dep: reduce ? 450 : home ? 1500 : 650,
-      warp: reduce ? 600 : Math.min(2200, 1000 + Math.max(0, gap) * 280), arr: reduce ? 700 : 1150, called: false, done,
+    fly = { from: a, to: b, home, t0: performance.now(), ignite: home && !reduce ? (quick ? 550 : 750) : 0, dep: reduce ? 450 : home ? (quick ? 1050 : 1500) : quick ? 260 : 650,
+      warp: reduce ? 600 : quick ? 380 : Math.min(2200, 1000 + Math.max(0, gap) * 280), arr: reduce ? 700 : quick ? 560 : 1150, called: false, done,
       passed: STOPS.slice(a + 1, b).map((stop) => ({ stop, done: false })) };
     greet = null;
     if (home) { sfx.countdown(); sfx.liftoff(); } else sfx.boost(false);
@@ -3068,6 +3106,7 @@
   const stopFor = (s) => { const i = idxFor(Math.max(1, s)); return i >= 0 ? STOPS[i].name : "LIFTOFF"; };
   window.Launch = {
     cut: cutSounds,
+    sputter: () => { sfx.sputter(); sfx.alarm(); },
     boost: (big) => sfx.boost(big),
     stops: STOPS.map(({ p, key, name }) => ({ p, key, name })),
     muted: false,
@@ -3077,7 +3116,7 @@
     play(s, key, onDone) {
       setPlanet(key); clearAll(); score = s; at = -1; shown = new Set(); arrived = false; doneCb = onDone || null;
       const end = idxFor(Math.max(1, s));
-      const step = () => { if (at >= end) { arriveFinal(); return; } flyFrom(at, at + 1, () => { hopTimer = setTimeout(step, at >= end ? 300 : 1100); }); };
+      const step = () => { if (at >= end) { arriveFinal(); return; } flyFrom(at, at + 1, () => { hopTimer = setTimeout(step, at >= end ? 300 : 420); }, true); };
       step();
     },
     // Between rounds: always pick up where the last round left you, then fly on. A miss sputters in place.
