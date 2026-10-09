@@ -759,7 +759,12 @@
     tick: (hurry) => tone(hurry ? 880 : 440, 0.03, 0, "square", hurry ? 0.05 : 0.025),
     lock: () => { tone(220, 0.06); tone(330, 0.08, 0.06); },
     hit: (p) => { const n = p >= 80 ? 5 : p >= 40 ? 4 : 3; [523, 659, 784, 1047, 1319].slice(0, n).forEach((f, i) => tone(f, 0.1, 0.25 + i * 0.08)); },
-    miss: () => { tone(196, 0.18, 0.25, "square", 0.05); tone(147, 0.3, 0.45, "square", 0.05); },
+    // A miss: a thud, a falling slide whistle, then two sad low notes.
+    miss: () => {
+      noise(0.22, 0.2, 1400, 80, 0.3);
+      for (let i = 0; i < 9; i++) tone(700 - i * 60, 0.05, 0.26 + i * 0.035, "triangle", 0.05);
+      tone(196, 0.18, 0.62, "square", 0.05); tone(147, 0.38, 0.8, "square", 0.05);
+    },
     // Locking in: a tight window rings high and bright, a wide one low and soft.
     commit: (k) => { const b = 880 - k * 420; tone(b, 0.05, 0, "square", 0.04); tone(b * 1.5, 0.08, 0.05, "square", 0.035); },
     blip: () => tone(1046, 0.03, 0, "square", 0.025),                                       // small buttons
@@ -1015,7 +1020,7 @@
     // New kinds join as the waves go on: zigzaggers (2), fast divers (4), armored (5), splitters (7).
     const pool = ["norm", "norm"]; if (w >= 2) pool.push("zig"); if (w >= 4) pool.push("fast"); if (w >= 5) pool.push("armor"); if (w >= 7) pool.push("split");
     const type = pool[Math.floor(Math.random() * pool.length)], speed = { norm: 1, zig: 1, fast: 1.75, armor: 0.8, split: 0.9 }[type];
-    flyers.push({ k: "bug", type, x: x0, x0, y: -8, vx: 0, vy: (16 + w * 2) * speed, wob: Math.random() * 6, born: performance.now(), lo: a, hi: b - 9 });
+    flyers.push({ k: "bug", type, x: x0, x0, y: -8, vx: 0, vy: (19 + w * 2.4) * speed, wob: Math.random() * 6, born: performance.now(), lo: a, hi: b - 9 });
   }
   function spawnBoss() {
     const g = gutters(); if (!g.length) return;
@@ -1177,7 +1182,7 @@
         f.vx = Math.sign(f.vx || 1) * (16 + rage * 26); f.vy = 3.5 + rage * 3;
         if (arc.t >= f.drop) {                                           // it drops a bug below itself
           f.drop = arc.t + Math.max(1.1, 2.6 - rage * 1.4);
-          flyers.push({ k: "bug", type: Math.random() < 0.5 ? "norm" : "zig", x: f.x + 4, x0: f.x + 4, y: f.y + 8, vx: 0, vy: 18 + arc.wave * 2, wob: Math.random() * 6, born: now, lo: f.lo, hi: f.hi + 8 });
+          flyers.push({ k: "bug", type: Math.random() < 0.5 ? "norm" : "zig", x: f.x + 4, x0: f.x + 4, y: f.y + 8, vx: 0, vy: 21 + arc.wave * 2.4, wob: Math.random() * 6, born: now, lo: f.lo, hi: f.hi + 8 });
         }
       }
       if (enemy && f.y > sc.height - 4) { flyers.splice(i, 1); if (arc.state === "play") loseLife(f.k === "boss" ? 2 : 1); continue; }
@@ -1492,8 +1497,16 @@
   function climbTo(v) {
     buildClimb();
     if (Math.min(1, v) > RAIL.cur + 0.005) [196, 262, 330, 392, 523].forEach((f, i) => tone(f, 0.06, i * 0.05, "square", 0.035));   // the little rocket climbs: fwoosh
+    // About to reach a new stage: a little blast first, then the REACHED popup.
+    const newStage = railStops().some((st) => st.p > RAIL.cur && st.p <= Math.min(1, v));
+    if (newStage && window.Launch && window.Launch.miniBlast) { window.Launch.muted = !soundOn; window.Launch.miniBlast(); }
     RAIL.target = Math.min(1, v);
-    cancelAnimationFrame(RAIL.raf);
+    cancelAnimationFrame(RAIL.raf); clearTimeout(climbTo.wait);
+    // blast first, then the rocket climbs and the stage dings
+    if (newStage && !reduce) { climbTo.wait = setTimeout(() => climbRun(), 380); return; }
+    climbRun();
+  }
+  function climbRun() {
     const from = RAIL.cur, t0 = performance.now(), d = reduce ? 1 : 1100;
     let passed = railStops().filter((st) => st.p <= from).length;
     (function step(now) {
@@ -2532,18 +2545,18 @@
     if (st.key === "rocks") return [0, 0];
     const R = st.off * st.u; return [Math.cos(st.ang) * R, Math.sin(st.ang) * R];
   }
-  function startGreet(st, now) {
+  function startGreet(st, now, speak = true) {
     if (!st || st.key === "whale" || !LINES[st.key]) return;
     greet = { st, at: now, line: 0, poke: 0 };
-    if (st.key === "ufo") { sfx.aliens(); alienVoice("Hi, Earthling!"); }
+    if (st.key === "ufo" && speak) { sfx.aliens(); voiceLine("ufo", "Hi, Earthling!"); }
+    else if (speak) voiceLine(st.key, LINES[st.key][0]);
   }
   function poke() {
     if (!greet) return;
     greet.poke = performance.now(); greet.line++;
     const k = greet.st.key;
-    if (k === "ufo") { sfx.aliens(); alienVoice(LINES.ufo[greet.line % LINES.ufo.length].toLowerCase().replace("u r", "you are").replace("tmrw", "tomorrow")); }
-    else if (sfx.react[k]) sfx.react[k]();
-    else sfx.pass(k);
+    if (k === "ufo") sfx.aliens(); else if (sfx.react[k]) sfx.react[k](); else sfx.pass(k);
+    voiceLine(k, LINES[k][greet.line % LINES[k].length]);
   }
   function drawBubble(text, sx, sy) {
     ctx.font = "16px 'Jersey 10', monospace"; ctx.textBaseline = "middle";
@@ -2785,8 +2798,9 @@
 
   const ease3 = (k) => 1 - Math.pow(1 - k, 3);
   const stageEl = document.getElementById("stage");
-  function frame(now) {
-    if (!stageEl.offsetParent) { lastNow = now; raf = requestAnimationFrame(frame); return; }
+  // once = draw a single frame right now (a scene just started), without touching the animation loop.
+  function frame(now, once) {
+    if (!once && !stageEl.offsetParent) { lastNow = now; raf = requestAnimationFrame(frame); return; }
     ctx.setTransform(SC, 0, 0, SC, 0, 0); ctx.imageSmoothingEnabled = false;
     const dt = Math.min(0.05, Math.max(0, (now - (lastNow || now)) / 1000)); lastNow = now;
     const tt = now / 1000;
@@ -2810,7 +2824,7 @@
         const k = (T - f.dep - f.warp) / f.arr, e = ease3(k);
         if (!f.called) { f.called = true; arriving(f.to, f.from === f.to); }
         speed = 4 + (VMAX - 4) * Math.pow(1 - k, 3); zoff = (1 - e) * 520; v = Math.max(0, 1 - k / 0.55); view = f.to;
-      } else land(now);
+      } else { land(now); view = at; drop = at < 0 ? 0 : 1; zoff = 0; v = 0; }   // draw the stop you just reached, not the one you left
     }
     const sputter = now - sputterAt;
     if (sputter < 900) shake = Math.max(shake, sputter < 500 ? 2 : 1);
@@ -2870,7 +2884,7 @@
     drawGreetBubble(now);
 
     $("alt").textContent = `${shown.size}/${STOPS.length} STOPS`;
-    raf = requestAnimationFrame(frame);
+    if (!once) raf = requestAnimationFrame(frame);
   }
   let raf = 0, helloAt = 0, calloutTimer = 0;
 
@@ -2895,7 +2909,7 @@
     if (at >= 0) {
       greet = null;
       if (STOPS[at].key === "whale") { helloAt = now; setTimeout(() => sayHello(), 500); }
-      else startGreet(STOPS[at], now);
+      else startGreet(STOPS[at], now, !f.quick || at >= playEnd);
     }
     const g = greet && greet.st === STOPS[at];
     if (f.done) f.done(g);
@@ -2995,6 +3009,45 @@
       hiss(0, big ? 1.0 : 0.65, 300, big ? 5000 : 4000, big ? 0.45 : 0.35, 0.8);
       tone(big ? 784 : 988, 0.09, big ? 0.48 : 0.34, "triangle", 0.06); tone(big ? 1175 : 1319, 0.12, big ? 0.56 : 0.41, "triangle", 0.06);
     },
+    // The launch: a deep boom at ignition, a roar that builds as you climb, crackling thrust, a whoosh into the warp.
+    blast(when = 0) {
+      if (window.Launch && window.Launch.muted) return;
+      const a = audio(); if (!a) return;
+      const t = a.currentTime + when;
+      hiss(when, 1.0, 500, 50, 0.7, 0.5);                                       // the boom
+      [[55, 0.9, 0.18], [41, 1.2, 0.16]].forEach(([f, d, v]) => {
+        const o = a.createOscillator(), g = a.createGain(); o.type = "sine";
+        o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.25);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g).connect(out(a)); o.start(t); o.stop(t + d + 0.05);
+      });
+      hiss(when + 0.1, 2.4, 160, 2200, 0.45, 0.45);                             // the roar, building
+      const o = a.createOscillator(), g = a.createGain(); o.type = "sawtooth";   // the engine note climbing
+      o.frequency.setValueAtTime(70, t + 0.1); o.frequency.exponentialRampToValueAtTime(420, t + 2.3);
+      g.gain.setValueAtTime(0.0001, t + 0.1); g.gain.exponentialRampToValueAtTime(0.05, t + 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.5);
+      o.connect(g).connect(out(a)); o.start(t + 0.1); o.stop(t + 2.6);
+      for (let i = 0; i < 16; i++) hiss(when + 0.15 + i * 0.12 + Math.random() * 0.04, 0.05, 3000, 1200, 0.28, 3);   // crackle
+      hiss(when + 1.9, 0.7, 600, 7000, 0.3, 1.2);                               // whoosh into the warp
+    },
+    // A short blast for the side rail: boom, a quick roar, a few crackles.
+    miniBlast() {
+      hiss(0, 0.6, 450, 60, 0.5, 0.5); tone(60, 0.4, 0, "sine", 0.12);
+      hiss(0.05, 0.9, 200, 1800, 0.3, 0.5);
+      for (let i = 0; i < 6; i++) hiss(0.08 + i * 0.1, 0.04, 3000, 1200, 0.2, 3);
+    },
+    // A lost round: wah, wah, wah, waaah.
+    lose(when = 0) {
+      if (window.Launch && window.Launch.muted) return;
+      const a = audio(); if (!a) return;
+      [[392, 0.2], [370, 0.2], [349, 0.2], [294, 0.7]].forEach(([f, d], i) => {
+        const t = a.currentTime + when + i * 0.24, o = a.createOscillator(), g = a.createGain(), flt = a.createBiquadFilter();
+        o.type = "sawtooth"; o.frequency.setValueAtTime(f, t);
+        if (i === 3) { const l = a.createOscillator(), lg = a.createGain(); l.frequency.value = 6; lg.gain.value = 8; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + d); }
+        flt.type = "lowpass"; flt.frequency.setValueAtTime(500, t); flt.frequency.linearRampToValueAtTime(1600, t + 0.08); flt.frequency.linearRampToValueAtTime(500, t + d);   // the "wah"
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(flt).connect(g).connect(out(a)); o.start(t); o.stop(t + d + 0.05);
+      });
+    },
     sputter() {
       // cough, cough, cough... and the engine dies (mid-range so phones play it)
       for (let i = 0; i < 5; i++) { hiss(i * 0.17, 0.1, 900, 200, 0.45, 1.2); tone(180 - i * 18, 0.08, i * 0.17, "square", 0.07); }
@@ -3042,6 +3095,34 @@
     // Out of the tunnel: everything winds down.
     slow() { hiss(0, 0.9, 2600, 300, 0.2, 1.4); [784, 659, 523].forEach((f, i) => tone(f, 0.1, 0.1 + i * 0.09, "triangle", 0.035)); },
   };
+  // Every stop talks in its own voice. Macs and iPhones ship fun novelty voices (Zarvox, Whisper, Bad News...);
+  // anywhere else we shape a normal voice with pitch and speed so each one still sounds different.
+  const VOICE = {
+    sats:   { names: ["Zarvox", "Trinoids", "Fred"], pitch: 1.6, rate: 1.35 },     // chirpy little robots
+    rocks:  { names: ["Ralph", "Bahh", "Fred"], pitch: 0.3, rate: 0.85 },          // grumpy and gravelly
+    moon:   { names: ["Kathy", "Princess", "Samantha"], pitch: 1.3, rate: 0.85 },  // soft and dreamy
+    mars:   { names: ["Trinoids", "Zarvox"], pitch: 0.7, rate: 1.1 },              // the rover, a robot
+    giant:  { names: ["Bubbles", "Ralph"], pitch: 0.1, rate: 0.75 },               // big and booming
+    kepler: { names: ["Good News", "Junior", "Samantha"], pitch: 1.4, rate: 1 },   // hopeful and sing-song
+    ufo:    { names: ["Junior", "Bubbles"], pitch: 2, rate: 1.3 },                 // squeaky aliens
+    nebula: { names: ["Whisper"], pitch: 1.5, rate: 0.8, volume: 0.7 },            // a hush, there are babies
+    nova:   { names: ["Albert", "Boing", "Superstar"], pitch: 1.4, rate: 1.4 },    // loud and excited
+    hole:   { names: ["Bad News", "Cellos", "Ralph"], pitch: 0.1, rate: 0.6 },     // deep and spooky
+  };
+  function voiceLine(key, text) {
+    if (window.Launch && window.Launch.muted) return;
+    const v = VOICE[key]; if (!v || !text) return;
+    const say = text.replace(/\*[^*]*\*/g, "").replace(/ - ROVER/, "").replace(/\bU R\b/, "you are").replace(/TMRW/, "tomorrow").replace(/\.\.\./g, ",").toLowerCase().trim();
+    if (!/[a-z]/.test(say)) return;                     // "*WINK*" is just a wink
+    try {
+      const u = new SpeechSynthesisUtterance(say), all = speechSynthesis.getVoices();
+      const pick = v.names.map((n) => all.find((x) => x.name.toLowerCase().startsWith(n.toLowerCase()))).find(Boolean);
+      if (pick) { u.voice = pick; u.pitch = 1; u.rate = 1; } else { u.pitch = v.pitch; u.rate = v.rate; }
+      u.volume = v.volume || 0.9;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  try { speechSynthesis.getVoices(); speechSynthesis.addEventListener("voiceschanged", () => speechSynthesis.getVoices()); } catch (e) {}
   function alienVoice(text) {
     if (window.Launch && window.Launch.muted) return;
     try {
@@ -3082,7 +3163,7 @@
   addEventListener("pointerup", unlock); addEventListener("click", unlock);
 
   // ---------- API used by the game ----------
-  let doneCb = null, hopAt = 0;
+  let doneCb = null, hopAt = 0, playEnd = 99;
   const setPlanet = (key) => {
     if (planetKey !== key) { planetKey = PLANETS[key] ? key : "earth"; planetImg = renderPlanet(PLANETS[planetKey], 200); }
     $("planet-name").textContent = PLANETS[planetKey].name;
@@ -3096,17 +3177,19 @@
   function flyFrom(a, b, done, quick) {
     const home = a < 0, gap = b - a - 1;
     fly = { from: a, to: b, home, t0: performance.now(), ignite: home && !reduce ? (quick ? 550 : 750) : 0, dep: reduce ? 450 : home ? (quick ? 1050 : 1500) : quick ? 260 : 650,
-      warp: reduce ? 600 : quick ? 380 : Math.min(2200, 1000 + Math.max(0, gap) * 280), arr: reduce ? 700 : quick ? 560 : 1150, called: false, done,
+      quick, warp: reduce ? 600 : quick ? 380 : Math.min(2200, 1000 + Math.max(0, gap) * 280), arr: reduce ? 700 : quick ? 560 : 1150, called: false, done,
       passed: STOPS.slice(a + 1, b).map((stop) => ({ stop, done: false })) };
     greet = null;
-    if (home) { sfx.countdown(); sfx.liftoff(); } else sfx.boost(false);
+    if (home) { sfx.countdown(); sfx.blast(quick ? 0.55 : 0.75); } else sfx.boost(false);
     flyFrom.t = setTimeout(() => { sfx.warp(fly ? fly.warp / 1000 + 0.3 : 1); sfx.humStart(); }, fly.dep - 150);
   }
   setInterval(() => { if (fly) sfx.humAt(STOPS[Math.max(0, fly.to)].p); }, 200);
+  const paintNow = () => { try { frame(performance.now(), true); } catch (e) {} };
   const stopFor = (s) => { const i = idxFor(Math.max(1, s)); return i >= 0 ? STOPS[i].name : "LIFTOFF"; };
   window.Launch = {
     cut: cutSounds,
-    sputter: () => { sfx.sputter(); sfx.alarm(); },
+    sputter: () => { sfx.sputter(); sfx.alarm(); sfx.lose(0.75); },
+    miniBlast: () => sfx.miniBlast(),
     boost: (big) => sfx.boost(big),
     stops: STOPS.map(({ p, key, name }) => ({ p, key, name })),
     muted: false,
@@ -3115,7 +3198,8 @@
     // The whole trip in one go (the checkpoint tour): every stop, one after another.
     play(s, key, onDone) {
       setPlanet(key); clearAll(); score = s; at = -1; shown = new Set(); arrived = false; doneCb = onDone || null;
-      const end = idxFor(Math.max(1, s));
+      const end = idxFor(Math.max(1, s)); playEnd = end;
+      paintNow();
       const step = () => { if (at >= end) { arriveFinal(); return; } flyFrom(at, at + 1, () => { hopTimer = setTimeout(step, at >= end ? 300 : 420); }, true); };
       step();
     },
@@ -3134,11 +3218,12 @@
       flyFrom(at, Math.max(at, to), (g) => finish(g ? (STOPS[Math.max(at, to)].key === "ufo" ? 3400 : 2400) : 900));
     },
     // The end screen: no flight, just the view from where you ended up.
-    rest(s, key) {
+    rest(s, key, speak = false) {
       setPlanet(key); clearAll(); score = s; at = idxFor(Math.max(1, s)); arrived = false;
       shown = new Set(STOPS.slice(0, at + 1).map((st) => st.key));
       const st = STOPS[at];
-      if (st.key === "whale") { helloAt = performance.now(); setTimeout(() => sayHello(), 600); } else startGreet(st, performance.now());
+      if (st.key === "whale") { helloAt = performance.now(); if (speak) setTimeout(() => sayHello(), 600); } else startGreet(st, performance.now(), speak);
+      paintNow();
       arriveFinal();
     },
     // One tap: between rounds it continues; on the end screen it pokes whoever's there.
