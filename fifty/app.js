@@ -61,6 +61,7 @@ function landing() {
     <h1 class="logo">fifty</h1>
     <h2>Predict your friends.</h2>
     <p class="sub">Every market starts at 50/50. Your picks move it.</p>
+    ${St.S.pendingJoin ? `<div class="invite-note">You're invited to a group. Enter your name to join.</div>` : ''}
     <div class="badge-pm"><b>Play money only</b><span>Points can't be bought, cashed out, or won as prizes.</span></div>
     <form id="onboard" class="stack-form" autocomplete="off">
       <input id="name" class="field" maxlength="24" placeholder="Your first name" autocomplete="given-name" enterkeyhint="go">
@@ -78,6 +79,8 @@ function home() {
     <main>
       ${about.length ? `<button class="banner" data-go="#/m/${about[0].id}">${icon('eye', 20)}<span><b>Your friends made a market on you</b><small>${esc(about[0].question)}</small></span></button>` : ''}
       <div class="sec-h"><h3>Groups</h3><span class="grow"></span><button class="link" data-act="join">Join</button><button class="link" data-act="newGroup">New</button></div>
+      ${!St.cloud.uid ? `<p class="muted small">${St.cloud.offline ? "Can't reach Fifty. Demo groups still work." : 'Connecting…'}</p>` :
+        !groups.some((g) => !g.isDemo) ? `<button class="cta card" data-act="newGroup"><b>Start a group with your friends</b><span class="muted">Get a room code to send them.</span></button>` : ''}
       <div class="list">${groups.map((g) => `<button class="row card" data-go="#/g/${g.id}">
           <span class="emoji">${esc(g.emoji)}</span><span class="grow"><b>${esc(g.name)}</b><small>${g.memberIds.length} people${g.isDemo ? ' · demo' : ''}</small></span>
           <span class="right"><b class="tab">${Fmt.pts(St.balance(St.S.me, g.id))}</b><small>${stack(g.memberIds, 18, 4)}</small></span></button>`).join('')}</div>
@@ -103,10 +106,12 @@ function groupView(gid) {
   const bal = St.balance(St.S.me, gid), ms = St.marketsIn(gid);
   const body = tab === 'board' ? leaderboardView(gid) : tab === 'activity' ? activityView(gid) : (ms.map(marketCard).join('') || '<p class="muted center">No markets yet. Open the first one.</p>');
   return `<header class="bar"><button class="iconbtn" data-go="#/">${icon('back')}</button><span class="title">${esc(g.emoji)} ${esc(g.name)}</span><span class="grow"></span>
+      ${g.isDemo ? '' : `<button class="iconbtn" data-act="members" data-gid="${gid}" aria-label="Members">${icon('users')}</button>`}
       <button class="iconbtn" data-act="invite" data-gid="${gid}" aria-label="Invite">${icon('share')}</button></header>
     <main>
       <div class="bank card"><small class="muted">Your play points</small><b class="big tab">${Fmt.pts(bal)}</b>
-        <span class="row2">${stack(g.memberIds, 24, 8)}<span class="grow"></span>${g.isDemo ? '<span class="tag">Demo</span>' : `<span class="tag mono">Code ${esc(g.code)}</span>`}</span></div>
+        <span class="row2">${stack(g.memberIds, 24, 8)}<span class="grow"></span>${g.isDemo ? '<span class="tag">Demo</span>' : `<button class="tag mono" data-act="invite" data-gid="${gid}">Code ${esc(g.code)}</button>`}</span></div>
+      ${!g.isDemo && g.memberIds.length < 2 ? `<button class="cta card" data-act="invite" data-gid="${gid}"><b>Invite your friends</b><span class="muted">Markets are more fun with people in them.</span></button>` : ''}
       <button class="btn primary" data-act="newMarket" data-gid="${gid}">${icon('plus', 20)} New market</button>
       <nav class="tabs">${[['markets', 'Markets'], ['board', 'Leaderboard'], ['activity', 'Activity']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('')}</nav>
       <div class="list">${body}</div>
@@ -173,7 +178,7 @@ function marketView(mid) {
       <div class="list">${m.trades.slice(-25).reverse().map((t) => tradeRow(t, m, false)).join('')}
         <div class="trow">${avatar(m.creatorId, 26)}<span class="grow">${esc(creator)} opened this at 50/50</span><small class="muted">${Fmt.ago(m.createdAt)}</small></div></div>
       ${canTake ? `<button class="link danger center-block" data-act="takeDown" data-mid="${mid}">${m.subjectId === St.S.me ? 'This is about me. Take it down.' : 'Cancel and refund everyone'}</button>` : ''}
-      ${m.creatorId !== St.S.me && !St.member(m.creatorId)?.isBot ? `<button class="link center-block muted" data-act="block" data-id="${m.creatorId}">Block ${esc(creator)}</button>` : ''}
+      ${m.creatorId !== St.S.me && !g.isDemo ? `<div class="two minor"><button class="link muted" data-act="report" data-mid="${mid}">Report</button><button class="link muted" data-act="block" data-id="${m.creatorId}">Block ${esc(creator)}</button></div>` : ''}
     </main>`;
 }
 
@@ -215,7 +220,8 @@ function sheetView() {
   if (!sheet) return '';
   const k = sheet.kind;
   const body = k === 'ticket' ? ticketSheet() : k === 'newMarket' ? newMarketSheet() : k === 'newGroup' ? newGroupSheet() : k === 'join' ? joinSheet()
-    : k === 'inbox' ? inboxSheet() : k === 'settings' ? settingsSheet() : k === 'install' ? installSheet() : k === 'confirm' ? confirmSheet() : k === 'invite' ? inviteSheet() : '';
+    : k === 'inbox' ? inboxSheet() : k === 'settings' ? settingsSheet() : k === 'install' ? installSheet() : k === 'confirm' ? confirmSheet() : k === 'invite' ? inviteSheet()
+    : k === 'members' ? membersSheet() : k === 'report' ? reportSheet() : '';
   return `<div class="scrim" data-act="close"></div><section class="sheet ${k === 'ticket' ? 'ticketsheet' : ''}" role="dialog" aria-modal="true">${body}</section>`;
 }
 const sheetHead = (title, right = '') => `<div class="sheet-h"><button class="link" data-act="close">Close</button><b>${title}</b><span>${right}</span></div>`;
@@ -265,17 +271,39 @@ function newGroupSheet() {
     <small class="muted center">Everyone starts with 500 play points.</small></div>`;
 }
 function joinSheet() {
+  if (sheet.info) {
+    const i = sheet.info, mine = St.group(i.gid)?.memberIds.includes(St.S.me);
+    return `${sheetHead('Join a group')}<div class="sheet-b center">
+      <span class="joinemoji">${esc(i.emoji)}</span><h3>${esc(i.name)}</h3><span class="tag mono">${esc(i.code)}</span>
+      <div class="badge-pm"><b>Everyone starts with 500 play points</b><span>Play money only. No real-money side bets.</span></div>
+      <button class="btn primary" data-act="${mine ? 'openJoined' : 'doJoin'}" ${sheet.busy ? 'disabled' : ''}>${mine ? 'Open group' : sheet.busy ? 'Joining…' : `Join ${esc(i.name)}`}</button>
+      ${sheet.msg ? `<small class="no-t">${esc(sheet.msg)}</small>` : ''}</div>`;
+  }
   return `${sheetHead('Join a group')}<div class="sheet-b center">
-    <input id="code" class="field codefield" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off">
-    <button class="btn primary" data-act="joinCode">Join</button>
-    <small class="muted">${esc(sheet.msg || 'Got a link? Just open it.')}</small></div>`;
+    <input id="code" class="field codefield" maxlength="4" placeholder="CODE" autocapitalize="characters" autocomplete="off" value="${esc(sheet.code || '')}">
+    <button class="btn primary" data-act="joinCode" ${sheet.busy ? 'disabled' : ''}>${sheet.busy ? 'Looking…' : 'Find group'}</button>
+    <small class="${sheet.msg ? 'no-t' : 'muted'}">${esc(sheet.msg || 'Got a link? Just open it.')}</small></div>`;
 }
+const inviteLink = (g) => `${location.origin}${location.pathname}#/j/${g.code}`;
 function inviteSheet() {
   const g = St.group(sheet.gid);
+  if (g.isDemo) return `${sheetHead('Invite friends')}<div class="sheet-b center"><p class="muted">This is a demo group with simulated friends.</p>
+    <button class="btn primary" data-act="newGroup">Start a real group</button></div>`;
   return `${sheetHead('Invite friends')}<div class="sheet-b center">
     <small class="lab">ROOM CODE</small><b class="codebig mono">${esc(g.code)}</b>
-    <button class="btn primary" data-act="shareInvite" data-gid="${g.id}">${icon('share', 18)} Send invite</button>
-    <small class="muted">Playing with friends goes live soon. Your group and points stay on this phone for now.</small></div>`;
+    <button class="btn primary" data-act="shareInvite" data-gid="${g.id}">${icon('share', 18)} Send invite link</button>
+    <button class="btn ghost" data-act="copyInvite" data-gid="${g.id}">Copy link</button>
+    <small class="muted">${g.memberIds.length}/${St.LIMITS.groupSize} people · friends tap the link or enter the code</small></div>`;
+}
+function membersSheet() {
+  const g = St.group(sheet.gid);
+  return `${sheetHead('People')}<div class="sheet-b list">${g.memberIds.map((id) => `<div class="row">${avatar(id, 36)}<span class="grow"><b>${esc(nameOf(id))}</b>
+      <small class="muted">${id === g.ownerId ? 'Started the group' : ''}</small></span><b class="tab">${Fmt.pts(St.balance(id, g.id))}</b></div>`).join('')}
+    <button class="link danger center-block" data-act="leave" data-gid="${g.id}">Leave group</button></div>`;
+}
+function reportSheet() {
+  return `${sheetHead('Report')}<div class="sheet-b">${['Mean or bullying', 'Sexual or inappropriate', 'Real money or side bets', 'Something else'].map((r) =>
+    `<button class="row card" data-act="sendReport" data-reason="${r}">${r}</button>`).join('')}</div>`;
 }
 function inboxSheet() {
   const items = St.inbox(), seen = sheet.seen;
@@ -309,6 +337,8 @@ const root = $('#app');
 function render() {
   const a = document.activeElement, keep = a && a.id ? { id: a.id, s: a.selectionStart, e: a.selectionEnd } : null;
   const r = route();
+  if (r.name === 'j' && r.a) { window.history.replaceState(null, '', location.pathname + '#/'); St.setPendingJoin(r.a.toUpperCase().slice(0, 4)); }
+  if (St.me() && St.S.pendingJoin && St.cloud.uid && !sheet) { const code = St.S.pendingJoin; St.setPendingJoin(null); openJoin(code); return; }
   const page = !St.me() ? landing() : r.name === 'g' ? groupView(r.a) : r.name === 'm' ? marketView(r.a) : home();
   root.innerHTML = page + sheetView();
   document.body.classList.toggle('locked', !!sheet);
@@ -327,6 +357,7 @@ root.addEventListener('submit', (e) => {
   if (e.target.id === 'onboard') {
     if (!$('#age').checked) return toast('Check the 18+ box to start.', false);
     try { St.onboard($('#name').value); go('#/'); render(); } catch (x) { toast(x.message, false); }
+    if (St.S.pendingJoin) { const code = St.S.pendingJoin; St.setPendingJoin(null); openJoin(code); }
   }
 });
 root.addEventListener('input', (e) => {
@@ -368,31 +399,63 @@ root.addEventListener('click', async (e) => {
     case 'newMarket': create = { subject: null, q: '', close: 'tonight', cat: 'Tonight', seed: 0, error: '' }; open('newMarket', { gid: d.gid }); break;
     case 'shuffle': create.seed += 6; render(); break;
     case 'openMarket': {
+      if (busy) break; busy = true;
       const cl = { tonight: Close.tonight(), tomorrow: Close.tomorrow(23), weekend: Close.weekend(), week: Close.week() }[create.close];
-      try { const id = St.newMarket(sheet.gid, create.q, create.subject, cl); sheet = null; go('#/m/' + id); toast('Market open'); }
-      catch (x) { create.error = x.message; render(); }
-      break; }
-    case 'makeGroup': try { const id = St.newGroup($('#gname').value, sheet.emoji); sheet = null; go('#/g/' + id); } catch (x) { sheet.error = x.message; render(); } break;
-    case 'joinCode': { const code = $('#code').value.trim().toUpperCase(); const g = Object.values(St.S.groups).find((x) => x.code === code);
-      if (g && g.memberIds.includes(St.S.me)) { sheet = null; go('#/g/' + g.id); } else open('join', { msg: 'Joining friends\' groups goes live soon.' }); break; }
+      try { const id = await St.newMarket(sheet.gid, create.q, create.subject, cl); sheet = null; go('#/m/' + id); toast('Market open'); }
+      catch (x) { create.error = nice(x); render(); }
+      busy = false; break; }
+    case 'makeGroup': {
+      if (busy) break; busy = true; sheet.error = ''; sheet.busy = true; render();
+      try { const id = await St.newGroup(sheet.name ?? '', sheet.emoji); sheet = null; go('#/g/' + id); setTimeout(() => open('invite', { gid: id }), 400); }
+      catch (x) { sheet.error = nice(x); sheet.busy = false; render(); }
+      busy = false; break; }
+    case 'joinCode': {
+      const code = ($('#code').value || '').trim().toUpperCase();
+      if (code.length !== 4) { sheet.msg = 'Codes are 4 letters.'; render(); break; }
+      openJoin(code); break; }
+    case 'doJoin': {
+      if (busy) break; busy = true; sheet.busy = true; render();
+      try { const gid = await St.joinGroup(sheet.info); sheet = null; go('#/g/' + gid); toast(`You're in. 500 points to play.`); }
+      catch (x) { sheet.msg = nice(x); sheet.busy = false; render(); }
+      busy = false; break; }
+    case 'openJoined': { const gid = sheet.info.gid; sheet = null; go('#/g/' + gid); break; }
+    case 'members': open('members', { gid: d.gid }); break;
+    case 'leave': ask('Leave this group?', 'Your picks stay. You can rejoin with the code.', 'Leave', async () => { await St.leave(d.gid); go('#/'); toast('Left the group'); }); break;
+    case 'report': open('report', { mid: d.mid }); break;
+    case 'sendReport': { try { await St.report(sheet.mid, d.reason); } catch (x) {} close(); toast('Thanks. We\'ll take a look.'); break; }
+    case 'copyInvite': { const g = St.group(d.gid); try { await navigator.clipboard.writeText(inviteLink(g)); toast('Link copied'); } catch (x) { toast(inviteLink(g)); } break; }
     case 'pick': {
+      if (busy) break; busy = true;
       const m = St.market(d.mid), bal = St.balance(St.S.me, m.groupId), amount = Math.min(parseFloat(slip.amount) || 0, bal);
-      try { const t = St.placePick(d.mid, slip.side, amount, prob(m)); open('ticket', { t, mid: d.mid }); maybeInstallLater(); }
-      catch (x) { toast(x.message, false); render(); }
-      break; }
-    case 'sell': try { const t = St.sellAll(d.mid, d.side); toast(`Sold for ${Fmt.pts(-t.cash)}`); } catch (x) { toast(x.message, false); } break;
-    case 'settle': ask(`Settle as ${d.side === 'yes' ? 'Yes' : 'No'}?`, "Points go out to everyone. This can't be undone.", `Settle as ${d.side === 'yes' ? 'Yes' : 'No'}`, () => { St.settle(d.mid, d.side); toast('Settled'); }, false); break;
-    case 'takeDown': ask('Take this market down?', 'Everyone gets their play points back.', 'Take it down', () => { const gid = St.market(d.mid).groupId; St.takeDown(d.mid); go('#/g/' + gid); toast('Taken down'); }); break;
+      try { const t = await St.placePick(d.mid, slip.side, amount, prob(m)); open('ticket', { t, mid: d.mid }); maybeInstallLater(); }
+      catch (x) { toast(nice(x), false); render(); }
+      busy = false; break; }
+    case 'sell': try { const t = await St.sellAll(d.mid, d.side); toast(`Sold for ${Fmt.pts(-t.cash)}`); } catch (x) { toast(nice(x), false); } break;
+    case 'settle': ask(`Settle as ${d.side === 'yes' ? 'Yes' : 'No'}?`, "Points go out to everyone. This can't be undone.", `Settle as ${d.side === 'yes' ? 'Yes' : 'No'}`, async () => { await St.settle(d.mid, d.side); toast('Settled'); }, false); break;
+    case 'takeDown': ask('Take this market down?', 'Everyone gets their play points back.', 'Take it down', async () => { const gid = St.market(d.mid).groupId; await St.takeDown(d.mid); go('#/g/' + gid); toast('Taken down'); }); break;
     case 'block': ask(`Block ${St.member(d.id)?.name}?`, "You won't see their markets.", 'Block', () => { St.block(d.id); go('#/'); }); break;
-    case 'confirm': { const run = sheet.run; sheet = null; try { run(); } catch (x) { toast(x.message, false); } render(); break; }
-    case 'rename': try { St.rename($('#rename').value); toast('Saved'); } catch (x) { toast(x.message, false); } break;
+    case 'confirm': { const run = sheet.run; sheet = null; render(); try { await run(); } catch (x) { toast(nice(x), false); } render(); break; }
+    case 'rename': try { await St.rename($('#rename').value); toast('Saved'); } catch (x) { toast(nice(x), false); } break;
     case 'reset': ask('Reset this device?', 'Your groups and points on this phone are deleted.', 'Reset', () => { St.reset(); go('#/'); }); break;
     case 'doInstall': if (deferredInstall) { deferredInstall.prompt(); deferredInstall = null; close(); } break;
     case 'shareMarket': { const m = St.market(d.mid); share(`${m.question} The group says ${Fmt.pct(prob(m))}. Think you know better?`, location.href); break; }
     case 'shareTicket': { const m = St.market(sheet.mid); share(`I'm on ${sheet.t.side === 'yes' ? 'Yes' : 'No'} for "${m.question}". Play money on Fifty.`, location.origin + location.pathname); break; }
-    case 'shareInvite': { const g = St.group(d.gid); share(`Join "${g.name}" on Fifty. Code ${g.code}. Predict your friends, play money only.`, location.origin + location.pathname); break; }
+    case 'shareInvite': { const g = St.group(d.gid); share(`Join "${g.name}" on Fifty: predict your friends (play money only). Code ${g.code}`, inviteLink(g)); break; }
   }
 });
+let busy = false;
+// Firebase errors are cryptic; say something a person understands.
+function nice(x) {
+  const c = x?.code || '';
+  if (c.includes('permission-denied')) return "That didn't go through. The market may have closed, or you're not in this group.";
+  if (c.includes('unavailable') || c.includes('network')) return "Can't reach Fifty. Check your connection.";
+  return x?.message || 'Something went wrong.';
+}
+async function openJoin(code) {
+  open('join', { code, busy: true }); 
+  try { const info = await St.lookupCode(code); if (sheet?.kind === 'join') { sheet.info = info; sheet.busy = false; render(); } }
+  catch (x) { if (sheet?.kind === 'join') { sheet.msg = nice(x); sheet.busy = false; render(); } }
+}
 async function share(text, url) {
   try { if (navigator.share) { await navigator.share({ text, url }); return; } } catch (e) { return; }
   try { await navigator.clipboard.writeText(`${text} ${url}`); toast('Copied'); } catch (e) { toast('Copy failed', false); }
@@ -405,6 +468,7 @@ function maybeInstallLater() {
 let pendingInstall = false;
 addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; });
 
+St.startCloud().then(() => render());
 setInterval(St.botTick, 3500);
 setInterval(() => { if (!document.hidden && !document.activeElement?.matches?.('input,textarea')) render(); }, 30000);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
