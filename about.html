@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About Close Enough</title>
+<style>
+  /* Self-hosted pixel fonts (SIL Open Font License, assets/fonts/OFL.txt). Jersey 15 is the readable
+     text cut of the same family as the Jersey 10 logo, with natural letter spacing (no monospace gaps). */
+  @font-face { font-family: "Jersey 10"; src: url("assets/fonts/Jersey10-Regular.ttf") format("truetype"); font-display: swap; }
+  @font-face { font-family: "CE Text"; src: url("assets/fonts/Jersey15-Regular.ttf") format("truetype"); font-display: swap; size-adjust: 118%; }
+</style>
+<link rel="preload" href="assets/fonts/Jersey15-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="assets/fonts/Jersey10-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<style>
+  body { margin: 0; background: #1D2B53; color: #FFF1E8; font-family: "CE Text", system-ui, -apple-system, sans-serif; font-weight: 500; font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; padding: 32px 16px 80px; }
+  main { max-width: 640px; margin: 0 auto; display: grid; gap: 28px; }
+  h1 { font-family: "Jersey 10", monospace; font-weight: 400; font-size: 56px; line-height: .9; margin: 0; }
+  h2 { font-family: "Jersey 10", monospace; font-weight: 400; font-size: 32px; line-height: 1; margin: 0 0 8px; color: #FFEC27; }
+  p, ul { margin: 0; } ul { padding-left: 20px; display: grid; gap: 6px; }
+  a { color: #29ADFF; }
+  .back { font-family: "CE Text", system-ui, sans-serif; font-weight: 600; font-size: 12px; letter-spacing: 0.08em; }
+  .muted { color: #9EA9D4; font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="/">◀ BACK TO TODAY'S CASE</a>
+  <h1>About Close Enough</h1>
+  <section>
+    <h2>The game</h2>
+    <p>One new case every day at midnight Eastern Time: five questions about the real world, 25 seconds each. Set your guess, then tap how sure you are to lock it in. That picks your window: if the true number lands inside it, you score, and the tighter the range, the more you score. Miss and you get 0. Rounds 3 and 4 count double and the last round counts four times, so a perfect day is 1,000.</p>
+    <p>Every answer you catch fires your rocket farther out: low orbit, the Moon, Mars, a nebula, a black hole, and somewhere past all of it, a surprise. Miss and the engine sputters.</p>
+    <p>"People said" shows what the public guessed when a published survey asked the same question (for example Gapminder and Ipsos surveys).</p>
+  </section>
+  <section>
+    <h2>Where the numbers come from</h2>
+    <p>Every answer comes from a published source, shown under each question when it's revealed. Every case is checked by a person before it goes live. Main sources:</p>
+    <ul>
+      <li>Our World in Data (CC BY 4.0), including data from Gapminder and the UN</li>
+      <li>United Nations: World Population Prospects, World Urbanization Prospects, UNESCO, FAO, UNEP</li>
+      <li>World Bank: World Development Indicators, Global Findex, Poverty and Inequality Platform</li>
+      <li>WHO / UNICEF, ITU, GSMA Intelligence, IEA / Tracking SDG7, Ember, USGS, NIH, peer-reviewed studies</li>
+    </ul>
+    <p class="muted">Spotted a number that looks wrong? Email andrewmaxwellbusiness@gmail.com and it gets checked.</p>
+  </section>
+  <section>
+    <h2>Privacy</h2>
+    <ul>
+      <li>No ads and no tracking cookies. You never need an account to play.</li>
+      <li>When anyone finishes a day, we add 1 to that day's anonymous play count and their score to a running total, so we know how many games were played and the average score. Nothing about you is attached to it.</li>
+      <li>If you arrived from a link we posted (like one on Reddit), we count that arrival and whether a game was finished, per link, so we know which posts people enjoy. It's just a number per link.</li>
+      <li>If you don't sign in, your streak and results are saved only in your own browser. Clearing your browser data erases them.</li>
+      <li>If you choose to sign in with Google, we save your daily results (scores, your answer windows, and the day's theme) to your account, so your streak and stats follow you to other devices. Firebase Authentication keeps your Google name and email so it knows it's you when you sign in. We never email you, share it, or use it for marketing. The results are stored in Google Firebase and only you can read them. To remove them, email us and we'll delete them.</li>
+      <li>The site is hosted on GitHub Pages, which keeps standard short-term server logs to run and protect the site.</li>
+      <li>We don't collect your name, email, or location, and we don't sell anything about you.</li>
+    </ul>
+  </section>
+  <p class="muted">Made by Maxwell Games. Contact: andrewmaxwellbusiness@gmail.com</p>
+</main>
+</body>
+</html>
